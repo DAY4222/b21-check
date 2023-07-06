@@ -113,27 +113,28 @@ def maxruntime_for_train(dictionary, station_start, station_end, max_run_time):
     
     if len(dictionary) == 0:
         return None
-    trains_to_check = set(VIA_Train_Input_criteria_dict.keys())
-    for key in trains_to_check:
+    
+    for key in VIA_Train_Input_criteria_dict.keys():
         if key not in dictionary:
             print(f"Train {key} is not found in timetable given")
             continue
-        
+    
         df = dictionary[key]
         sub_dict_of_input_criteria = VIA_Train_Input_criteria_dict[key]
-                
+        
         end_df = df.loc[df['Station'] == station_end,"Arrival Time"]
         start_df = df.loc[df['Station'] == station_start,"Departure Time"]
-        print(key)
-        print(start_df)
+        
         if len(end_df.index) == 0 or end_df.values[0] == "HH:MM:SS":
             end_df = df.loc[df['Station'] == station_end,"Departure Time"]
+        
         if len(start_df.index) == 0 or  start_df.values[0] == "HH:MM:SS":
             start_df = df.loc[df['Station'] == station_start,"Arrival Time"]   
         
-        if start_df.empty and end_df.empty:
+        if start_df.empty or end_df.empty:
+            #print(f"{key} does not stop at one of the stations :(")
             continue
-        
+       
         Departure_Time = start_df.values[0]
         Arrival_Time = end_df.values[0]
     
@@ -147,17 +148,11 @@ def maxruntime_for_train(dictionary, station_start, station_end, max_run_time):
             print(f"The Train {key} runtime for the stations selected is below the the max, {time_diff}")
         else:
             print(f"{key} failed Max Run Time of {max_run_time}, actual runtime: {time_diff}")
-  
-
-
-
-
+    return True
 def test_maxruntime_for_train():
     assert maxruntime_for_train({}, "Aldershot Station", "Burlington Junction", "00:15:00") == None
-   
-
-#test_maxruntime_for_train()
-#maxruntime_for_train(VIA_dfs,"Union Station","Burlington Junction","00:15:00")
+    assert maxruntime_for_train(VIA_dfs,"Union Station","Burlington Junction","00:44:00") == True
+    
 print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
 def get_rows_with_column_value_true(dataframe, column_name, value):
@@ -222,27 +217,42 @@ def get_correct_row_(df,value_column):
         
     return info_row
 
-#TODO:CHECK ERORR make it check up to 5
-def station_stop_check(df,station_name_to_check):
-    for name, df in df.items():
-        df_of_matching_inputout_entries = df.loc[df["Train_ID"] == name, 'Station']
-        if not df_of_matching_inputout_entries.empty:
-            print(f"The train {name} does stop at {station_name_to_check}")
-        else: print(f"The train {name} does NOT stop at {station_name_to_check}")
-station_stop_check(VIA_dfs,"Guildwood Station")   
+def station_stop_check(dictionary, *stations_to_check):
+    for key in dictionary.keys():
+        if key not in VIA_dfs:
+            print(f"Train {key} is not found in the timetable given")
+            continue
+        
+        df = VIA_dfs[key]
+        
+        for station_name_to_check in stations_to_check:
+            if station_name_to_check == "":
+                continue
+            stops_at_station = station_name_to_check in df["Station"].values
+        
+            if stops_at_station:
+                print(f"Train {key} does stop at {station_name_to_check}")   
+            else :
+                print(f"Train {key} does NOT stop at {station_name_to_check}")
+    
+    return True
+
+def test_station_stop_check():
+    assert station_stop_check(VIA_Train_Input_criteria_dict,"Guildwood Station") == True
+    assert station_stop_check(VIA_Train_Input_criteria_dict,"Union Station") == True
+    assert station_stop_check(VIA_Train_Input_criteria_dict,"Guildwood Station","Union Station","")  == True
+
+
+#test_station_stop_check()
+station_stop_check(VIA_Train_Input_criteria_dict,"Guildwood Station","Union Station","")   
+
 #print(get_data_by_search(VIA_Train_Input_criteria,"VIA40", "Train_ID","Arrival Time"))
-# Example usage
 #print(get_data_by_search(VIA_Train_Input_criteria, "VIA651" ,"Train_ID", "Arrival Time"))
 
 #This function will check if a given value is within a range of 15 mins (900 seconds)
 #value Colum is the criteria you want to check , arrival dep time ect..
 
 #uses 15 min range hence 900 seconds
-
-#TODO: Potentially add in outbound in bound logic???? to function below
-
-
-
 
 def check_last_value_in_range_v2(df, value_column,bound_value):
     for name, df in df.items():
@@ -268,15 +278,14 @@ def check_last_value_in_range_v2(df, value_column,bound_value):
 
         # Display messages based on the comparison
         if is_in_range:
-            print("Arrival Time for {} is within the 15 min range of {}.".format(name, range_mid))
+            print("Punctuality for {} is within the 15 min range of {}.".format(name, range_mid))
         else:
-            print("Arrival Time for {} is not within the 15 min range of {}.".format(name, range_mid))
+            print("Punctuality for {} is NOT within the 15 min range of {}.".format(name, range_mid))
 
 # Example usage of function tools:
 
 #TODO:655,VIA60 exception need to be coded in SAME WITH THE / TRAINS
 #TODO:CHECK FOR VIA 78 RANGE ERROR AS MIDNIGHT thing
-#TODO:exception 2b ii) 97 and 98 create sub section for b iii)
 #TODO:2b iv)eception 88 which may bypass malton station
 
 #check_last_value_in_range_v2(VIA_dfs, "Arrival Time","Inbound")
@@ -354,11 +363,7 @@ def nrt_check(criteria_dict,connection_df,col_name_of_identifier,col_true_value,
         
         
 #nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Outbound")
-# print("----------------------------------------------------------------")
 # nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Inbound")
 
      
-#TODO: 300 MIN, DWELL TIME CHECK E TO NON E TABLE 9, Check the station stop function.
-#maxruntime_for_train(VIA_dfs,"Union Station","Burlington Junction","00:44:00")
-#def tmc_check_inbound(dfConnection,Train_ID,):
-#change wording to punctuality
+#TODO: 300 MIN, DWELL TIME CHECK E TO NON E TABLE 9
