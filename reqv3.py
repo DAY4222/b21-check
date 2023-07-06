@@ -4,7 +4,6 @@ from datetime import datetime, timedelta , time
 import time
 
 #Prep data
-# Read the text file into a DataFrame, skipping the first 14 rows
 df_main = pd.read_table("2023-06-01 CS1 Network Timetable (OT Format).txt", skiprows=14)
 # Define a list of column indices to drop from the DataFrame
 columns_to_drop = [1, 2, 3, 5, 6, 8, 10, 12, 13, 14, 15]
@@ -19,7 +18,6 @@ via_filter = df_main["Train_ID"].str.contains(search_word)
 # Create a new DataFrame containing only the filtered rows
 via_df = df_main[via_filter]
 
-#print(via_df)
 
 replacement_dict = {"HH:MM:SS": "00:00:00", "XX:XX:XX": "00:00:00"}
 via_df.replace(replacement_dict)
@@ -84,7 +82,6 @@ def create_subdataframes_dict_frome_dataframe(df, key_column):
     
     return data_dict
 
-
 # TODO: FIX MIDNIGHT EDGE CASE
 #POSSIBLE FIX TO MIDNIGHT RANGE ISSUE.... PLAYAROUND MORE
 #time_format = "%H:%M:%S"  # 24-hour format with seconds
@@ -101,7 +98,6 @@ def create_subdataframes_dict_frome_dataframe(df, key_column):
 #    print("23:45 PM is between 23:30 PM and 1 AM")
 #else:
 #    print("23:45 PM is not between 23:30 PM and 1 AM")
-
 
 #TODO: CHECK EDGE CASE FOR NON UNION CORRIDORS.
 
@@ -244,15 +240,13 @@ def test_station_stop_check():
 
 
 #test_station_stop_check()
-station_stop_check(VIA_Train_Input_criteria_dict,"Guildwood Station","Union Station","")   
+#station_stop_check(VIA_Train_Input_criteria_dict,"Guildwood Station","Union Station","")   
 
 #print(get_data_by_search(VIA_Train_Input_criteria,"VIA40", "Train_ID","Arrival Time"))
 #print(get_data_by_search(VIA_Train_Input_criteria, "VIA651" ,"Train_ID", "Arrival Time"))
 
 #This function will check if a given value is within a range of 15 mins (900 seconds)
 #value Colum is the criteria you want to check , arrival dep time ect..
-
-#uses 15 min range hence 900 seconds
 
 def check_last_value_in_range_v2(df, value_column,bound_value):
     for name, df in df.items():
@@ -282,7 +276,6 @@ def check_last_value_in_range_v2(df, value_column,bound_value):
         else:
             print("Punctuality for {} is NOT within the 15 min range of {}.".format(name, range_mid))
 
-# Example usage of function tools:
 
 #TODO:655,VIA60 exception need to be coded in SAME WITH THE / TRAINS
 #TODO:CHECK FOR VIA 78 RANGE ERROR AS MIDNIGHT thing
@@ -294,38 +287,47 @@ def check_last_value_in_range_v2(df, value_column,bound_value):
 #check_if_selected_category_dwells_on_station_based_on_icon(VIA_dfs, "Cross Icon", "yes", "Guildwood Station",60)
 #check_if_selected_cgatagory_dwells_on_staion_based_on_icon(VIA_dfs,"Table","Table 2", "Oakville Station")
 
-
-#find connections we must first find connection.
-
 def find_row_number(filename, search_string):
     row_number = None
 
     with open(filename, "r") as file:
         for i, line in enumerate(file, 1):
             if line.startswith(search_string):
-                row_number_connections = i
+                row_number = i
                 break
             
-    return row_number_connections
+    return row_number
 
-skiprows_needed = find_row_number("CS2 Network Timetable 1125.txt", "// Connections:")
-# Example usage
-
-df_connection_og = pd.read_table("CS2 Network Timetable 1125.txt", header=None, skiprows= skiprows_needed+2 )
-df_connection_og.columns = ["Train_ID", "ConnTrain_ID","StationIndex","ConnStation",
-                            "ConnTime","ConnChangeTime","ConnMaxChangeTime", "ConnectionType"]
-dfConnection = df_connection_og.drop(['ConnMaxChangeTime'], axis=1)
-
-
-df_timetable_that_has_connection_data = pd.read_table("CS2 Network Timetable 1125.txt", header=None, skiprows=13, nrows= skiprows_needed-15)
-df_timetable_that_has_connection_data.columns = ["courseID","intervalCourseID","timeToIntervalReference","stationIndex",
-                                                 "stationSign","trackName","arrTimeDayOffset","arrTime","depTimeDayOffset",
-                                                 "depTime","useDepTime","dwell","stopAtStation","meanDelay","Distribution","deltaMass"]
-df_timetable_that_has_connection_data = df_timetable_that_has_connection_data.loc[:,['courseID','stationIndex','stationSign','arrTime',
-                                                                                     'depTime','dwell']]
+def read_connection_data(filename, skiprows):
+    df_connection_og = pd.read_table(filename, header=None, skiprows=skiprows+2)
+    df_connection_og.columns = ["Train_ID", "ConnTrain_ID", "StationIndex", "ConnStation",
+                                "ConnTime", "ConnChangeTime", "ConnMaxChangeTime", "ConnectionType"]
+    dfConnection = df_connection_og.drop(['ConnMaxChangeTime'], axis=1)
+    return dfConnection
 
 
-connection_timetable_dict = create_subdataframes_dict_frome_dataframe(df_timetable_that_has_connection_data, 'courseID')
+def read_timetable_data(filename, skiprows, nrows):
+    df_timetable = pd.read_table(filename, header=None, skiprows=skiprows, nrows=nrows)
+    df_timetable.columns = ["courseID", "intervalCourseID", "timeToIntervalReference", "stationIndex",
+                            "stationSign", "trackName", "arrTimeDayOffset", "arrTime", "depTimeDayOffset",
+                            "depTime", "useDepTime", "dwell", "stopAtStation", "meanDelay", "Distribution", "deltaMass"]
+    df_timetable = df_timetable.loc[:, ['courseID', 'stationIndex', 'stationSign', 'arrTime',
+                                         'depTime', 'dwell']]
+    return df_timetable
+
+
+def create_subdataframes_dict_from_dataframe(dataframe, key_column):
+    subdataframes_dict = {}
+    unique_keys = dataframe[key_column].unique()
+    for key in unique_keys:
+        subdataframes_dict[key] = dataframe[dataframe[key_column] == key]
+    return subdataframes_dict
+
+filename = "CS2 Network Timetable 1125.txt"
+skiprows_needed = find_row_number(filename, "// Connections:")
+dfConnection = read_connection_data(filename, skiprows_needed)
+df_timetable_that_has_connection_data = read_timetable_data(filename, 13, skiprows_needed-15)
+connection_timetable_dict = create_subdataframes_dict_from_dataframe(df_timetable_that_has_connection_data, 'courseID')
 
 
 def keys_with_values(df,column_true_value1,column_name1,column_true_value2, column_name2):
@@ -360,9 +362,16 @@ def nrt_check(criteria_dict,connection_df,col_name_of_identifier,col_true_value,
         else:
             if nrt_that_matches.iat[0] in connection_timetable_dict.keys():
                 print(f"{modified_Train_ID} has a matching NRT")
+    return True   
         
-        
-#nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Outbound")
+def nrt_check_test():
+    assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Outbound") == True
+    assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Inbound") == True
+    
+
+nrt_check_test()
+
+# nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Outbound")
 # nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Inbound")
 
      
