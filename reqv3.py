@@ -2,25 +2,34 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta , time
 import time
+start_time = time.time()
 
-#Prep data
-df_main = pd.read_table("2023-06-01 CS1 Network Timetable (OT Format).txt", skiprows=14)
-# Define a list of column indices to drop from the DataFrame
-columns_to_drop = [1, 2, 3, 5, 6, 8, 10, 12, 13, 14, 15]
-# Drop the specified columns from df_main
-df_main.drop(df_main.columns[columns_to_drop], axis=1, inplace=True)
-# Rename the columns of df_main
-df_main.columns = ['Train_ID', 'Station', 'Arrival Time', 'Departure Time', "Dwell Time"]
-# Define the search word
+def preprocess_timetable(file_path):
+
+    # Read the timetable data from a text file into a DataFrame
+    df_main = pd.read_table(file_path, skiprows=14)
+    # Define a list of column indices to drop from the DataFrame
+    columns_to_drop = [1, 2, 3, 5, 6, 8, 10, 12, 13, 14, 15]
+    # Drop the specified columns from df_main
+    df_main.drop(df_main.columns[columns_to_drop], axis=1, inplace=True)
+    # Rename the columns of df_main
+    column_names = ['Train_ID', 'Station', 'Arrival Time', 'Departure Time', 'Dwell Time']
+    df_main.columns = column_names
+    return df_main
+
+def filter_and_replace(df, search_word, replacement_dict):
+    # Filter df based on Train_ID containing the search word
+    via_filter = df["Train_ID"].str.contains(search_word)
+    via_df = df[via_filter]
+    # Replace values in via_df using the replacement_dict
+    via_df.replace(replacement_dict)
+    return via_df
+
+file_path = "2023-06-01 CS1 Network Timetable (OT Format).txt"
+df_main = preprocess_timetable(file_path)
 search_word = "VIA"
-# Filter df_main based on Train_ID containing the search word
-via_filter = df_main["Train_ID"].str.contains(search_word)
-# Create a new DataFrame containing only the filtered rows
-via_df = df_main[via_filter]
-
-
 replacement_dict = {"HH:MM:SS": "00:00:00", "XX:XX:XX": "00:00:00"}
-via_df.replace(replacement_dict)
+via_df = filter_and_replace(df_main, search_word2, replacement_dict)
 
 def dictionary_from_data_frame(dataframe, column_name):
     values = dataframe[column_name].unique().tolist()
@@ -55,28 +64,6 @@ VIA_dfs = dictionary_from_data_frame(via_df,"Train_ID")
 VIA_Train_Input_criteria = pd.read_excel('InputExcel.xlsx')
 VIA_Train_Input_criteria_dict = create_sub_data_frames_dict_for_input_file('InputExcel.xlsx', 'Train_ID')
 
-# TODO: FIX MIDNIGHT EDGE CASE
-#POSSIBLE FIX TO MIDNIGHT RANGE ISSUE.... PLAYAROUND MORE
-#time_format = "%H:%M:%S"  # 24-hour format with seconds
-
-#time1 = datetime.strptime("23:30:00", time_format)
-#time2 = datetime.strptime("01:00:00", time_format)
-#check_time = datetime.strptime("23:45:00", time_format)
-
-# Adjust time2 if it is before time1 (crosses midnight)
-#if time2 < time1:
-#   time2 = time2 + datetime.timedelta(days=1)
-
-#if time1 <= check_time <= time2:
-#    print("23:45 PM is between 23:30 PM and 1 AM")
-#else:
-#    print("23:45 PM is not between 23:30 PM and 1 AM")
-
-#TODO: CHECK EDGE CASE FOR NON UNION CORRIDORS.
-
-#TODO: value = 90
-# time=timedelta(seconds=value)
-start_time = time.time()
 
 def maxruntime_for_train(dictionary, station_start, station_end, max_run_time):
     
@@ -122,13 +109,11 @@ def test_maxruntime_for_train():
     assert maxruntime_for_train({}, "Aldershot Station", "Burlington Junction", "00:15:00") == None
     assert maxruntime_for_train(VIA_dfs,"Union Station","Burlington Junction","00:44:00") == True
 
-print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
 def get_rows_with_column_value_true(dataframe, column_name, value):
     # Create a boolean mask based on the condition
     mask = dataframe[column_name] == value
     return dataframe[mask]  # Return the DataFrame slice where the mask is True
-
 
 
 def check_if_selected_category_dwells_on_station_based_on_icon(dictionary, icon, icon_valid_value, station,dwell_time_desired_sec):
@@ -216,6 +201,9 @@ def test_station_stop_check():
 #value Colum is the criteria you want to check , arrival dep time ect..
 
 def check_last_value_in_range_v2(df, value_column,bound_value):
+    total_over_range = 0  # Variable to store the total time over the 15-minute range
+
+    
     for name, df in df.items():
         # Access the last row of the DataFrame
         row_needed = get_correct_row_(df, value_column)
@@ -239,20 +227,24 @@ def check_last_value_in_range_v2(df, value_column,bound_value):
 
         # Display messages based on the comparison
         if is_in_range:
-            print("Punctuality for {} is within the 15 min range of {}.".format(name, range_mid))
+            print(f"Punctuality for {name} is within the 15 min range of {range_mid} with time {input_given_time}")
         else:
-            print("Punctuality for {} is NOT within the 15 min range of {}.".format(name, range_mid))
+            time_over_range = abs(input_given_time.total_seconds() - range_mid.total_seconds()) - 900
+            total_over_range += time_over_range
+            time_over_range_minutes = (time_over_range/60)
+           
+            print(f"Punctuality for {name} is NOT within the 15 min range of {range_mid}")
+            print(input_given_time)
+            print(name)
+            print(f"The train is over the range by {time_over_range_minutes} minutes.")
+            
+    total_over_range_minutes = total_over_range / 60
+    print(f"\nTotal time over the 15-minute range: {total_over_range_minutes} minutes.")
 
-
-#TODO:655,VIA60 exception need to be coded in SAME WITH THE / TRAINS
-#TODO:CHECK FOR VIA 78 RANGE ERROR AS MIDNIGHT thing
-#TODO:2b iv)eception 88 which may bypass malton station
 
 #check_last_value_in_range_v2(VIA_dfs, "Arrival Time","Inbound")
-#check_last_value_in_range_v2(VIA_dfs, "Departure Time")
-#station_stop_check(VIA_dfs,"Guildwood")
-#check_if_selected_category_dwells_on_station_based_on_icon(VIA_dfs, "Cross Icon", "yes", "Guildwood Station",60)
-#check_if_selected_cgatagory_dwells_on_staion_based_on_icon(VIA_dfs,"Table","Table 2", "Oakville Station")
+#check_last_value_in_range_v2(VIA_dfs, "Departure Time","Outbound")
+
 
 def find_row_number(filename, search_string):
     row_number = None
@@ -307,9 +299,6 @@ def keys_with_values(df,column_true_value1,column_name1,column_true_value2, colu
 
     
 
-# print(get_rows_with_column_value_true(VIA_Train_Input_criteria,"Star Icon","yes"))
-
-
 def nrt_check(criteria_dict,connection_df,col_name_of_identifier,col_true_value,outbound_or_inbound):
     keys_to_check = keys_with_values(criteria_dict,col_true_value,col_name_of_identifier,outbound_or_inbound,"Bound")
     if outbound_or_inbound == "Outbound":
@@ -336,9 +325,35 @@ def test_nrt_check():
     assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Inbound") == True
     
 
-# nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Outbound")
-# nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Inbound")
+#station_stop_check(VIA_dfs,"Guildwood")
+#check_if_selected_category_dwells_on_station_based_on_icon(VIA_dfs, "Cross Icon", "yes", "Guildwood Station",60)
 
-     
+
+    
 #TODO: 300 MIN, DWELL TIME CHECK E TO NON E TABLE 9
+#TODO:655,VIA60 exception need to be coded in SAME WITH THE / TRAINS
+#TODO:CHECK FOR VIA 78 RANGE ERROR AS MIDNIGHT thing
+#TODO:2b iv)eception 88 which may bypass malton station
+#TODO: FIX MIDNIGHT EDGE CASE
+#POSSIBLE FIX TO MIDNIGHT RANGE ISSUE.... PLAYAROUND MORE
+#time_format = "%H:%M:%S"  # 24-hour format with seconds
 
+#time1 = datetime.strptime("23:30:00", time_format)
+#time2 = datetime.strptime("01:00:00", time_format)
+#check_time = datetime.strptime("23:45:00", time_format)
+
+# Adjust time2 if it is before time1 (crosses midnight)
+#if time2 < time1:
+#   time2 = time2 + datetime.timedelta(days=1)
+
+#if time1 <= check_time <= time2:
+#    print("23:45 PM is between 23:30 PM and 1 AM")
+#else:
+#    print("23:45 PM is not between 23:30 PM and 1 AM")
+
+#test_maxruntime_for_train()
+#test_nrt_check()
+test_station_stop_check()
+
+
+print("Process finished --- %s seconds ---" % (time.time() - start_time))
