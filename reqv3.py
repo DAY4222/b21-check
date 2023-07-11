@@ -21,32 +21,20 @@ via_df = df_main[via_filter]
 
 replacement_dict = {"HH:MM:SS": "00:00:00", "XX:XX:XX": "00:00:00"}
 via_df.replace(replacement_dict)
-unique_values_trains = via_df['Train_ID'].unique().tolist()
-values = unique_values_trains
-unique_columns_name = df_main.columns.values
 
-# Initialize a dictionary to store sub-dataframes
-VIA_dfs = {}
+def dictionary_from_data_frame(dataframe, column_name):
+    values = dataframe[column_name].unique().tolist()
+    data_dict = {}
 
-# Iterate over each value
-for value in values:
-    # Create a filter to check if the value matches the text_column exactly
-    filter = via_df['Train_ID'] == value
+    for value in values:
+        filter = dataframe[column_name] == value
+        sub_df = dataframe[filter]
+        data_dict[value] = sub_df
 
-    # Apply the filter to create the sub-dataframe
-    sub_df = via_df[filter]
-
-    # Store the sub-dataframe in the dictionary with the value as the key
-    VIA_dfs[value] = sub_df
-
-# Access the sub-dataframes by value
-#test333 = VIA_dfs["VIA50/60"]
-#print(VIA_dfs["VIA50/60"])
+    return data_dict
 
 
-VIA_Train_Input_criteria = pd.read_excel('InputExcel.xlsx')
-
-def create_subdataframes_dict(excel_file_path, key_column):
+def create_sub_data_frames_dict_for_input_file(excel_file_path, key_column):
     df = pd.read_excel(excel_file_path)
     unique_values = df[key_column].unique().tolist()
     data_dict = {}
@@ -63,24 +51,9 @@ def create_subdataframes_dict(excel_file_path, key_column):
     
     return data_dict
 
-VIA_Train_Input_criteria_dict = create_subdataframes_dict('InputExcel.xlsx', 'Train_ID')
-
-
-def create_subdataframes_dict_frome_dataframe(df, key_column):
-    unique_values = df[key_column].unique().tolist()
-    data_dict = {}
-    
-    for value in unique_values:
-        # Create a filter to check if the value matches the key_column exactly
-        filter = df[key_column] == value
-
-        # Apply the filter to create the sub-dataframe
-        sub_df = df[filter]
-
-        # Store the sub-dataframe in the dictionary with the value as the key
-        data_dict[value] = sub_df
-    
-    return data_dict
+VIA_dfs = dictionary_from_data_frame(via_df,"Train_ID")
+VIA_Train_Input_criteria = pd.read_excel('InputExcel.xlsx')
+VIA_Train_Input_criteria_dict = create_sub_data_frames_dict_for_input_file('InputExcel.xlsx', 'Train_ID')
 
 # TODO: FIX MIDNIGHT EDGE CASE
 #POSSIBLE FIX TO MIDNIGHT RANGE ISSUE.... PLAYAROUND MORE
@@ -148,7 +121,7 @@ def maxruntime_for_train(dictionary, station_start, station_end, max_run_time):
 def test_maxruntime_for_train():
     assert maxruntime_for_train({}, "Aldershot Station", "Burlington Junction", "00:15:00") == None
     assert maxruntime_for_train(VIA_dfs,"Union Station","Burlington Junction","00:44:00") == True
-    
+
 print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
 def get_rows_with_column_value_true(dataframe, column_name, value):
@@ -238,12 +211,6 @@ def test_station_stop_check():
     assert station_stop_check(VIA_Train_Input_criteria_dict,"Union Station") == True
     assert station_stop_check(VIA_Train_Input_criteria_dict,"Guildwood Station","Union Station","")  == True
 
-
-#test_station_stop_check()
-#station_stop_check(VIA_Train_Input_criteria_dict,"Guildwood Station","Union Station","")   
-
-#print(get_data_by_search(VIA_Train_Input_criteria,"VIA40", "Train_ID","Arrival Time"))
-#print(get_data_by_search(VIA_Train_Input_criteria, "VIA651" ,"Train_ID", "Arrival Time"))
 
 #This function will check if a given value is within a range of 15 mins (900 seconds)
 #value Colum is the criteria you want to check , arrival dep time ect..
@@ -364,15 +331,14 @@ def nrt_check(criteria_dict,connection_df,col_name_of_identifier,col_true_value,
                 print(f"{modified_Train_ID} has a matching NRT")
     return True   
         
-def nrt_check_test():
+def test_nrt_check():
     assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Outbound") == True
     assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Inbound") == True
     
-
-nrt_check_test()
 
 # nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Outbound")
 # nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Inbound")
 
      
 #TODO: 300 MIN, DWELL TIME CHECK E TO NON E TABLE 9
+
