@@ -202,8 +202,8 @@ def test_station_stop_check():
 
 #This function will check if a given value is within a range of 15 mins (900 seconds)
 #value Colum is the criteria you want to check , arrival dep time ect..
-
-def check_last_value_in_range_v2(df, value_column,bound_value):
+#TODO: FIX AND SKIP TRAINS IWHT E IN THEM. AND MORE ABSTRACTINON
+def check_last_value_in_range(df, value_column,bound_value):
     total_over_range = 0  # Variable to store the total time over the 15-minute range
 
     
@@ -237,15 +237,18 @@ def check_last_value_in_range_v2(df, value_column,bound_value):
             time_over_range_minutes = (time_over_range/60)
            
             print(f"Punctuality for {name} is NOT within the 15 min range of {range_mid}")
-            print(input_given_time)
-            print(name)
             print(f"The train is over the range by {time_over_range_minutes} minutes.")
             
     total_over_range_minutes = total_over_range / 60
     print(f"\nTotal time over the 15-minute range: {total_over_range_minutes} minutes.")
+    return True
 
-#check_last_value_in_range_v2(VIA_dfs, "Arrival Time","Inbound")
-#check_last_value_in_range_v2(VIA_dfs, "Departure Time","Outbound")
+def test_check_last_value_in_range():
+    assert check_last_value_in_range(VIA_dfs, "Arrival Time","Inbound") == True
+    assert check_last_value_in_range(VIA_dfs, "Departure Time","Outbound") == True
+
+#check_last_value_in_range(VIA_dfs, "Arrival Time","Inbound")
+#check_last_value_in_range(VIA_dfs, "Departure Time","Outbound")
 
 def find_row_number(filename, search_string):
     row_number = None
@@ -322,7 +325,6 @@ def filter_nrt_connection(criteria_dict, connection_df, col_name_of_identifier, 
         
     return nrt_connection_dictionary
 
-
 def nrt_check(criteria_dict, connection_df, col_name_of_identifier, col_true_value, bound_direction):
     nrt_connection_dictionary = filter_nrt_connection(criteria_dict, connection_df, col_name_of_identifier,
                                                       col_true_value, bound_direction)
@@ -337,12 +339,13 @@ def test_nrt_check():
     assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Outbound") == True
     assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Inbound") == True
 
-#TODO: DWELL TIME CHECK E TO NON E TABLE 9
-#TODO:655,VIA60 exception need to be coded in SAME WITH THE / TRAINS
-#TODO:CHECK FOR VIA 78 RANGE ERROR AS MIDNIGHT thing
-#TODO:2b iv)eception 88 which may bypass malton station
-#TODO: FIX MIDNIGHT EDGE CASE
-#POSSIBLE FIX TO MIDNIGHT RANGE ISSUE.... PLAYAROUND MORE
+#TODO: DWELL TIME CHECK E TO NON E TABLE 9 first step done part 2 next dict created, 
+# now match find time and sum time.
+#TODO:655,VIA60 exception need to be coded in SAME WITH THE / TRAINS, potential only issue for old datafile,
+#investigate when new timetable is here.
+#TODO:2b iv)exception 88 which may bypass malton station, will be fixed in bus logic output writing
+#TODO:FIX MIDNIGHT EDGE CASE I don't think this is an issue, module takes care of it but worth a test!VIA 78
+#POSSIBLE FIX TO MIDNIGHT RANGE ISSUE....
 #time_format = "%H:%M:%S"  # 24-hour format with seconds
 
 #time1 = datetime.strptime("23:30:00", time_format)
@@ -364,8 +367,9 @@ def test_box1():
     test_max_runtime_for_train()
     test_nrt_check()
     test_station_stop_check()
+    test_check_last_value_in_range()
 
-test_box1()
+#test_box1()
 print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
 
