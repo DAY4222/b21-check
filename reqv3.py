@@ -295,43 +295,48 @@ def keys_with_values(df,column_true_value1,column_name1,column_true_value2, colu
     
     return keys_with_yes_value 
 
-#TODO: FIX THE CASE WITH / IN THE TRAIN ID, THEY ARE NOT FOUND AS THE FINAL PART, EG: possible error with VIA50/60.1 possible error with VIA52/62.1
-def nrt_check(criteria_dict,connection_df,col_name_of_identifier,col_true_value,bound_Direction):
-    keys_to_check = keys_with_values(criteria_dict,col_true_value,col_name_of_identifier,bound_Direction,"Bound")
+#TODO: FIX THE CASE WITH / IN THE TRAIN ID, THEY ARE NOT FOUND AS THE FINAL PART, EG: possible error with VIA50/60.1 possible error with VIA52/62.1  
+  
+def filter_nrt_connection(criteria_dict, connection_df, col_name_of_identifier, col_true_value, bound_direction):
+    keys_to_check = keys_with_values(criteria_dict, col_true_value, col_name_of_identifier, bound_direction, "Bound")
     nrt_connection_dictionary = {}
-    
-    if bound_Direction == "Outbound":
+
+    if bound_direction == "Outbound":
         connection_type = 2
         column_nrt_found = 'Train_ID'
         column_to_look_for_key = 'ConnTrain_ID'
-        
-    elif bound_Direction == "Inbound":
+    elif bound_direction == "Inbound":
         connection_type = 2
         column_nrt_found = "ConnTrain_ID"
         column_to_look_for_key = 'Train_ID'
-        
-    for Train_Id in keys_to_check:
-        modified_Train_ID = Train_Id +".1"
-        nrt_that_matches = connection_df.loc[(connection_df[column_to_look_for_key] == modified_Train_ID) &
-                                            (connection_df['ConnectionType'] == connection_type),column_nrt_found]
-       
+
+    for train_id in keys_to_check:
+        modified_train_id = train_id + ".1"
+        nrt_that_matches = connection_df.loc[(connection_df[column_to_look_for_key] == modified_train_id) &
+                                             (connection_df['ConnectionType'] == connection_type), column_nrt_found]
         if nrt_that_matches.empty:
-            print(f"possible error with {modified_Train_ID}")
-            
-        else:
-            if nrt_that_matches.iat[0] in connection_timetable_dict.keys():
-                nrt_connection_dictionary[Train_Id] = nrt_that_matches.iat[0]
-                print(f"{modified_Train_ID} has a matching NRT")
-                #print(f"The matching NRT for {Train_Id} is : {nrt_that_matches.iat[0]}")
-    #print(nrt_connection_dictionary)            
-    return True  
+            print(f"No matching NRT found for train {train_id}.")
+            continue   
+        if not nrt_that_matches.empty and nrt_that_matches.iat[0] in connection_timetable_dict.keys():
+            nrt_connection_dictionary[train_id] = nrt_that_matches.iat[0]
         
+    return nrt_connection_dictionary
+
+
+def nrt_check(criteria_dict, connection_df, col_name_of_identifier, col_true_value, bound_direction):
+    nrt_connection_dictionary = filter_nrt_connection(criteria_dict, connection_df, col_name_of_identifier,
+                                                      col_true_value, bound_direction)
+    for train_id, nrt_value in nrt_connection_dictionary.items():
+        modified_train_id = train_id + ".1"
+        print(f"{modified_train_id} has a matching NRT")
+        print(f"The matching NRT for {train_id} is: {nrt_value}")
+
+    return True
+
 def test_nrt_check():
     assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Outbound") == True
     assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Inbound") == True
-    
-test_nrt_check()
-    
+
 #TODO: DWELL TIME CHECK E TO NON E TABLE 9
 #TODO:655,VIA60 exception need to be coded in SAME WITH THE / TRAINS
 #TODO:CHECK FOR VIA 78 RANGE ERROR AS MIDNIGHT thing
@@ -355,9 +360,12 @@ test_nrt_check()
 
 #station_stop_check(VIA_dfs,"Guildwood")
 #check_if_selected_category_dwells_on_station_based_on_icon(VIA_dfs, "Cross Icon", "yes", "Guildwood Station",60)
+def test_box1():
+    test_max_runtime_for_train()
+    test_nrt_check()
+    test_station_stop_check()
 
-
-
+test_box1()
 print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
 
