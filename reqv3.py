@@ -29,7 +29,7 @@ file_path = "2023-06-01 CS1 Network Timetable (OT Format).txt"
 df_main = preprocess_timetable(file_path)
 search_word = "VIA"
 replacement_dict = {"HH:MM:SS": "00:00:00", "XX:XX:XX": "00:00:00"}
-via_df = filter_and_replace(df_main, search_word2, replacement_dict)
+via_df = filter_and_replace(df_main, search_word, replacement_dict)
 
 def dictionary_from_data_frame(dataframe, column_name):
     values = dataframe[column_name].unique().tolist()
@@ -41,7 +41,6 @@ def dictionary_from_data_frame(dataframe, column_name):
         data_dict[value] = sub_df
 
     return data_dict
-
 
 def create_sub_data_frames_dict_for_input_file(excel_file_path, key_column):
     df = pd.read_excel(excel_file_path)
@@ -63,7 +62,6 @@ def create_sub_data_frames_dict_for_input_file(excel_file_path, key_column):
 VIA_dfs = dictionary_from_data_frame(via_df,"Train_ID")
 VIA_Train_Input_criteria = pd.read_excel('InputExcel.xlsx')
 VIA_Train_Input_criteria_dict = create_sub_data_frames_dict_for_input_file('InputExcel.xlsx', 'Train_ID')
-
 
 def maxruntime_for_train(dictionary, station_start, station_end, max_run_time):
     
@@ -105,16 +103,15 @@ def maxruntime_for_train(dictionary, station_start, station_end, max_run_time):
         else:
             print(f"{key} failed Max Run Time of {max_run_time}, actual runtime: {time_diff}")
     return True
+
 def test_maxruntime_for_train():
     assert maxruntime_for_train({}, "Aldershot Station", "Burlington Junction", "00:15:00") == None
     assert maxruntime_for_train(VIA_dfs,"Union Station","Burlington Junction","00:44:00") == True
-
 
 def get_rows_with_column_value_true(dataframe, column_name, value):
     # Create a boolean mask based on the condition
     mask = dataframe[column_name] == value
     return dataframe[mask]  # Return the DataFrame slice where the mask is True
-
 
 def check_if_selected_category_dwells_on_station_based_on_icon(dictionary, icon, icon_valid_value, station,dwell_time_desired_sec):
     result = []
@@ -133,12 +130,21 @@ def check_if_selected_category_dwells_on_station_based_on_icon(dictionary, icon,
         else:
             print(f"The key '{key}' does not exist in the dictionary.")
 
-
 def check_dwell_time_at_station(train_df, station, dwell_time_desired_sec):
     mask = (train_df['Dwell Time'] == dwell_time_desired_sec) & (train_df['Station'] == station)
     filtered_df = train_df[mask]
     return not filtered_df.empty
 
+#TODO: FINISH ???
+def check_dwell_time_between_NRT_and_RT_at_Union():
+    trains_to_check = VIA_Train_Input_criteria_dict.keys()
+    for key in trains_to_check:
+        if key not in dictionary:
+            print(f" No matching key for {key} found in timetable")
+            return 
+        if df["Bound"] == "Inbound":
+            return
+    return
 
 #this function retrieves a specific value from a DataFrame based on a search key and the corresponding key and value columns.                   
 def get_data_by_search(df, search_key, key_column, value_column):
@@ -156,7 +162,6 @@ def get_data_by_search(df, search_key, key_column, value_column):
     # If no matching value or null value is found, return None
     get_data_by_search.failedkey_nan = 1
     return None
-
 
 def get_correct_row_(df,value_column):
     value = str(value_column)
@@ -195,7 +200,6 @@ def test_station_stop_check():
     assert station_stop_check(VIA_Train_Input_criteria_dict,"Guildwood Station") == True
     assert station_stop_check(VIA_Train_Input_criteria_dict,"Union Station") == True
     assert station_stop_check(VIA_Train_Input_criteria_dict,"Guildwood Station","Union Station","")  == True
-
 
 #This function will check if a given value is within a range of 15 mins (900 seconds)
 #value Colum is the criteria you want to check , arrival dep time ect..
@@ -241,10 +245,8 @@ def check_last_value_in_range_v2(df, value_column,bound_value):
     total_over_range_minutes = total_over_range / 60
     print(f"\nTotal time over the 15-minute range: {total_over_range_minutes} minutes.")
 
-
 #check_last_value_in_range_v2(VIA_dfs, "Arrival Time","Inbound")
 #check_last_value_in_range_v2(VIA_dfs, "Departure Time","Outbound")
-
 
 def find_row_number(filename, search_string):
     row_number = None
@@ -264,7 +266,6 @@ def read_connection_data(filename, skiprows):
     dfConnection = df_connection_og.drop(['ConnMaxChangeTime'], axis=1)
     return dfConnection
 
-
 def read_timetable_data(filename, skiprows, nrows):
     df_timetable = pd.read_table(filename, header=None, skiprows=skiprows, nrows=nrows)
     df_timetable.columns = ["courseID", "intervalCourseID", "timeToIntervalReference", "stationIndex",
@@ -273,7 +274,6 @@ def read_timetable_data(filename, skiprows, nrows):
     df_timetable = df_timetable.loc[:, ['courseID', 'stationIndex', 'stationSign', 'arrTime',
                                          'depTime', 'dwell']]
     return df_timetable
-
 
 def create_subdataframes_dict_from_dataframe(dataframe, key_column):
     subdataframes_dict = {}
@@ -288,49 +288,50 @@ dfConnection = read_connection_data(filename, skiprows_needed)
 df_timetable_that_has_connection_data = read_timetable_data(filename, 13, skiprows_needed-15)
 connection_timetable_dict = create_subdataframes_dict_from_dataframe(df_timetable_that_has_connection_data, 'courseID')
 
-
 def keys_with_values(df,column_true_value1,column_name1,column_true_value2, column_name2):
     keys_with_yes_value = []
     for key, dataframe in df.items():
         if column_true_value1 in dataframe[column_name1].values and column_true_value2 in dataframe[column_name2].values :
             keys_with_yes_value.append(key)
     
-    return keys_with_yes_value
+    return keys_with_yes_value 
 
-    
-
-def nrt_check(criteria_dict,connection_df,col_name_of_identifier,col_true_value,outbound_or_inbound):
-    keys_to_check = keys_with_values(criteria_dict,col_true_value,col_name_of_identifier,outbound_or_inbound,"Bound")
-    if outbound_or_inbound == "Outbound":
+#TODO: FIX THE CASE WITH / IN THE TRAIN ID, THEY ARE NOT FOUND AS THE FINAL PART, EG: possible error with VIA50/60.1 possible error with VIA52/62.1
+def nrt_check(criteria_dict,connection_df,col_name_of_identifier,col_true_value,bound_Direction):
+    keys_to_check = keys_with_values(criteria_dict,col_true_value,col_name_of_identifier,bound_Direction,"Bound")
+    nrt_connection_dictionary = {}
+    if bound_Direction == "Outbound":
         connection_type = 2
         column_nrt_found = 'Train_ID'
-    elif outbound_or_inbound == "Inbound":
-        connection_type = 0
+        column_to_look_for_key = 'ConnTrain_ID'
+    elif bound_Direction == "Inbound":
+        connection_type = 2
         column_nrt_found = "ConnTrain_ID"
+        column_to_look_for_key = 'Train_ID'
         
     for Train_Id in keys_to_check:
         modified_Train_ID = Train_Id +".1"
 
-        nrt_that_matches = connection_df.loc[(connection_df['ConnTrain_ID'] == modified_Train_ID) &
+        nrt_that_matches = connection_df.loc[(connection_df[column_to_look_for_key] == modified_Train_ID) &
                                             (connection_df['ConnectionType'] == connection_type),column_nrt_found]
+       
         if nrt_that_matches.empty:
             print(f"possible error with {modified_Train_ID}")
         else:
             if nrt_that_matches.iat[0] in connection_timetable_dict.keys():
+                nrt_connection_dictionary[Train_Id] = nrt_that_matches.iat[0]
                 print(f"{modified_Train_ID} has a matching NRT")
-    return True   
+                #print(f"The matching NRT for {Train_Id} is : {nrt_that_matches.iat[0]}")
+    #print(nrt_connection_dictionary)            
+    return True  
         
 def test_nrt_check():
     assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Outbound") == True
     assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Inbound") == True
     
-
-#station_stop_check(VIA_dfs,"Guildwood")
-#check_if_selected_category_dwells_on_station_based_on_icon(VIA_dfs, "Cross Icon", "yes", "Guildwood Station",60)
-
-
+test_nrt_check()
     
-#TODO: 300 MIN, DWELL TIME CHECK E TO NON E TABLE 9
+#TODO: DWELL TIME CHECK E TO NON E TABLE 9
 #TODO:655,VIA60 exception need to be coded in SAME WITH THE / TRAINS
 #TODO:CHECK FOR VIA 78 RANGE ERROR AS MIDNIGHT thing
 #TODO:2b iv)eception 88 which may bypass malton station
@@ -351,9 +352,11 @@ def test_nrt_check():
 #else:
 #    print("23:45 PM is not between 23:30 PM and 1 AM")
 
-#test_maxruntime_for_train()
-#test_nrt_check()
-test_station_stop_check()
+#station_stop_check(VIA_dfs,"Guildwood")
+#check_if_selected_category_dwells_on_station_based_on_icon(VIA_dfs, "Cross Icon", "yes", "Guildwood Station",60)
+
 
 
 print("Process finished --- %s seconds ---" % (time.time() - start_time))
+
+
