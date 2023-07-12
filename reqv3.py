@@ -63,7 +63,7 @@ VIA_dfs = dictionary_from_data_frame(via_df,"Train_ID")
 VIA_Train_Input_criteria = pd.read_excel('InputExcel.xlsx')
 VIA_Train_Input_criteria_dict = create_sub_data_frames_dict_for_input_file('InputExcel.xlsx', 'Train_ID')
 
-def maxruntime_for_train(dictionary, station_start, station_end, max_run_time):
+def max_runtime_for_train(dictionary, station_start, station_end, max_run_time):
     
     if len(dictionary) == 0:
         return None
@@ -75,7 +75,6 @@ def maxruntime_for_train(dictionary, station_start, station_end, max_run_time):
     
         df = dictionary[key]
         sub_dict_of_input_criteria = VIA_Train_Input_criteria_dict[key]
-        
         end_df = df.loc[df['Station'] == station_end,"Arrival Time"]
         start_df = df.loc[df['Station'] == station_start,"Departure Time"]
         
@@ -104,9 +103,9 @@ def maxruntime_for_train(dictionary, station_start, station_end, max_run_time):
             print(f"{key} failed Max Run Time of {max_run_time}, actual runtime: {time_diff}")
     return True
 
-def test_maxruntime_for_train():
-    assert maxruntime_for_train({}, "Aldershot Station", "Burlington Junction", "00:15:00") == None
-    assert maxruntime_for_train(VIA_dfs,"Union Station","Burlington Junction","00:44:00") == True
+def test_max_runtime_for_train():
+    assert max_runtime_for_train({}, "Aldershot Station", "Burlington Junction", "00:15:00") == None
+    assert max_runtime_for_train(VIA_dfs,"Union Station","Burlington Junction","00:44:00") == True
 
 def get_rows_with_column_value_true(dataframe, column_name, value):
     # Create a boolean mask based on the condition
@@ -275,18 +274,18 @@ def read_timetable_data(filename, skiprows, nrows):
                                          'depTime', 'dwell']]
     return df_timetable
 
-def create_subdataframes_dict_from_dataframe(dataframe, key_column):
-    subdataframes_dict = {}
+def create_sub_data_frames_dict_from_dataframe(dataframe, key_column):
+    sub__data_frames_dict = {}
     unique_keys = dataframe[key_column].unique()
     for key in unique_keys:
-        subdataframes_dict[key] = dataframe[dataframe[key_column] == key]
-    return subdataframes_dict
+        sub__data_frames_dict[key] = dataframe[dataframe[key_column] == key]
+    return sub__data_frames_dict
 
 filename = "CS2 Network Timetable 1125.txt"
 skiprows_needed = find_row_number(filename, "// Connections:")
 dfConnection = read_connection_data(filename, skiprows_needed)
 df_timetable_that_has_connection_data = read_timetable_data(filename, 13, skiprows_needed-15)
-connection_timetable_dict = create_subdataframes_dict_from_dataframe(df_timetable_that_has_connection_data, 'courseID')
+connection_timetable_dict = create_sub_data_frames_dict_from_dataframe(df_timetable_that_has_connection_data, 'courseID')
 
 def keys_with_values(df,column_true_value1,column_name1,column_true_value2, column_name2):
     keys_with_yes_value = []
@@ -300,10 +299,12 @@ def keys_with_values(df,column_true_value1,column_name1,column_true_value2, colu
 def nrt_check(criteria_dict,connection_df,col_name_of_identifier,col_true_value,bound_Direction):
     keys_to_check = keys_with_values(criteria_dict,col_true_value,col_name_of_identifier,bound_Direction,"Bound")
     nrt_connection_dictionary = {}
+    
     if bound_Direction == "Outbound":
         connection_type = 2
         column_nrt_found = 'Train_ID'
         column_to_look_for_key = 'ConnTrain_ID'
+        
     elif bound_Direction == "Inbound":
         connection_type = 2
         column_nrt_found = "ConnTrain_ID"
@@ -311,12 +312,12 @@ def nrt_check(criteria_dict,connection_df,col_name_of_identifier,col_true_value,
         
     for Train_Id in keys_to_check:
         modified_Train_ID = Train_Id +".1"
-
         nrt_that_matches = connection_df.loc[(connection_df[column_to_look_for_key] == modified_Train_ID) &
                                             (connection_df['ConnectionType'] == connection_type),column_nrt_found]
        
         if nrt_that_matches.empty:
             print(f"possible error with {modified_Train_ID}")
+            
         else:
             if nrt_that_matches.iat[0] in connection_timetable_dict.keys():
                 nrt_connection_dictionary[Train_Id] = nrt_that_matches.iat[0]
