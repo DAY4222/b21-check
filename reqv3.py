@@ -300,10 +300,9 @@ def keys_with_values(df,column_true_value1,column_name1,column_true_value2, colu
 
 #TODO: FIX THE CASE WITH / IN THE TRAIN ID, THEY ARE NOT FOUND AS THE FINAL PART, EG: possible error with VIA50/60.1 possible error with VIA52/62.1  
   
-def filter_nrt_connection(criteria_dict, connection_df, col_name_of_identifier, col_true_value, bound_direction):
-    keys_to_check = keys_with_values(criteria_dict, col_true_value, col_name_of_identifier, bound_direction, "Bound")
+def filter_nrt_connection(criteria_dict, col_name_of_identifier, col_true_value, bound_direction,Bound):
+    keys_to_check = keys_with_values(criteria_dict, col_true_value, col_name_of_identifier, bound_direction, Bound)
     nrt_connection_dictionary = {}
-
     if bound_direction == "Outbound":
         connection_type = 2
         column_nrt_found = 'Train_ID'
@@ -315,29 +314,61 @@ def filter_nrt_connection(criteria_dict, connection_df, col_name_of_identifier, 
 
     for train_id in keys_to_check:
         modified_train_id = train_id + ".1"
-        nrt_that_matches = connection_df.loc[(connection_df[column_to_look_for_key] == modified_train_id) &
-                                             (connection_df['ConnectionType'] == connection_type), column_nrt_found]
+        nrt_that_matches = dfConnection.loc[(dfConnection[column_to_look_for_key] == modified_train_id) &
+                                             (dfConnection['ConnectionType'] == connection_type), column_nrt_found]
         if nrt_that_matches.empty:
             print(f"No matching NRT found for train {train_id}.")
-            continue   
+            continue
+        if 'E' not in nrt_that_matches.iat[0]:
+            print(f"No matching NRT found for train {train_id}, connection 2 is train: {nrt_that_matches.iat[0]}.")
+            continue
         if not nrt_that_matches.empty and nrt_that_matches.iat[0] in connection_timetable_dict.keys():
             nrt_connection_dictionary[train_id] = nrt_that_matches.iat[0]
         
     return nrt_connection_dictionary
 
-def nrt_check(criteria_dict, connection_df, col_name_of_identifier, col_true_value, bound_direction):
-    nrt_connection_dictionary = filter_nrt_connection(criteria_dict, connection_df, col_name_of_identifier,
-                                                      col_true_value, bound_direction)
+def nrt_check(criteria_dict, col_name_of_identifier, col_true_value, bound_direction, Bound):
+    nrt_connection_dictionary = filter_nrt_connection(criteria_dict, col_name_of_identifier,col_true_value, bound_direction, Bound)
     for train_id, nrt_value in nrt_connection_dictionary.items():
         modified_train_id = train_id + ".1"
-        print(f"{modified_train_id} has a matching NRT")
-        print(f"The matching NRT for {train_id} is: {nrt_value}")
+        print(f"{modified_train_id} has a matching NRT. The matching NRT for {train_id} is: {nrt_value}")
 
     return True
 
 def test_nrt_check():
-    assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Outbound") == True
-    assert nrt_check(VIA_Train_Input_criteria_dict, dfConnection,"Star Icon", "yes","Inbound") == True
+    assert nrt_check(VIA_Train_Input_criteria_dict,"Star Icon", "yes","Outbound","Bound") == True
+    assert nrt_check(VIA_Train_Input_criteria_dict,"Star Icon", "yes","Inbound","Bound") == True
+
+
+def nrt_check_for_dwell():
+    
+    for index, row in VIA_Train_Input_criteria.itertuples():
+        print(row)
+       
+    if VIA_Train_Input_criteria["Bound"].iat[0] == "Outbound":
+        connection_type = 2
+        column_nrt_found = 'Train_ID'
+        column_to_look_for_key = 'ConnTrain_ID'
+    elif VIA_Train_Input_criteria["Bound"].iat[0] == "Inbound":
+        connection_type = 2
+        column_nrt_found = "ConnTrain_ID"
+        column_to_look_for_key = 'Train_ID'
+        
+    modified_train_id = VIA_Train_Input_criteria["Train_ID"].iat[0] + ".1"
+    dwell_time = dfConnection.loc[(dfConnection[column_to_look_for_key] == modified_train_id) & 
+                                  (dfConnection['ConnectionType'] == connection_type), :]
+    # print(dwell_time[connChangeTime])
+    
+
+nrt_check_for_dwell()
+#nrt_check_for_dwell(VIA_Train_Input_criteria_dict,"select_all","yes","Outbound")
+
+
+
+
+
+
+
 
 #TODO: DWELL TIME CHECK E TO NON E TABLE 9 first step done part 2 next dict created, 
 # now match find time and sum time.
