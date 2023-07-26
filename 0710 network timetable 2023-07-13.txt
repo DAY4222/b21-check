@@ -20690,8 +20690,8 @@ VIA88.1	VIAE88.1	45	Union Station	0	0:10:00	HH:MM:SS	2
 VIA97.1	VIAE99.1	0	Union Station	0	0:10:00	HH:MM:SS	0								
 VIA98.1	VIAE98.1	49	Union Station	0	0:10:00	HH:MM:SS	2								
 VIAE1.1	VIA1.1	6	Union Station	0	1:00:00	HH:MM:SS	2								
-VIAE150.1	VIA50/60.1	6	Union Station	0	0:10:00	HH:MM:SS	2								
-VIAE152.1	VIA52/62.1	6	Union Station	0	0:10:00	HH:MM:SS	2								
+VIAE150.1	VIA50&60.1	6	Union Station	0	0:10:00	HH:MM:SS	2								
+VIAE152.1	VIA52&62.1	6	Union Station	0	0:10:00	HH:MM:SS	2								
 VIAE2.1	VIA2.1	0	Union Station	0	0:40:00	HH:MM:SS	0								
 VIAE43.1	VIA43.1	0	Union Station	0	0:10:00	HH:MM:SS	0								
 VIAE44.1	VIA44.1	6	Union Station	0	0:10:00	HH:MM:SS	2								
