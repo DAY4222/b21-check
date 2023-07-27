@@ -31,8 +31,10 @@ def find_row_number(filename, search_string):
             if line.startswith(search_string):
                 row_number = i
                 break
-            
-    return row_number
+    if row_number is None:
+        return False
+    else:           
+        return row_number
 
 def read_connection_data(filename, skiprows):
     columns_to_read = [0, 1, 2, 3, 4, 5, 6, 7]
@@ -85,12 +87,6 @@ def scenario_selector(scenario):
            
         return what_type_of_day
 
-
-
-
-
-
-
     
 #-------------Initialize_data_frames_set_scenario-----------------------------------------------------------------------------------------------
 
@@ -101,10 +97,19 @@ scenario = "S3"
 #Is the timetable weekday?weeknd?both?
 
 
-#Create DF of timetable
 skip_rows_needed_for_time_table = find_row_number(filename, "// Connections:")
-df_Timetable = read_timetable_data(filename, 13, skip_rows_needed_for_time_table-15)
 
+#Create DF of timetable
+#Handle no conection table CASE
+if skip_rows_needed_for_time_table == None:
+    df_Timetable = read_timetable_data(filename, 13, None)
+else:
+    df_Timetable = read_timetable_data(filename, 13, skip_rows_needed_for_time_table-15)
+    #Make a df and dict of the connection data at the end of the file only if it exsits.
+    df_Connection = read_connection_data(filename, skip_rows_needed_for_time_table)
+    connection_timetable_dict = create_sub_data_frames_dict_from_dataframe(df_VIA_Timetable, 'Train_ID')    
+    
+    
 #Create DF of only VIA in timetable and dict
 search_word = "VIA"
 replacement_dict = {"HH:MM:SS": "00:00:00", "XX:XX:XX": "00:00:00"}
@@ -115,10 +120,8 @@ Via_df_Timetable_dict = create_sub_data_frames_dict_from_dataframe(df_VIA_Timeta
 VIA_Train_Input_criteria = row_selector_based_on_weekdayendwith_values('InputExcel.xlsx','Sheet1',scenario_selector(scenario))
 VIA_Train_Input_criteria_dict = create_sub_data_frames_dict_for_input_file(VIA_Train_Input_criteria, 'Train_ID')
 
-#Make a df and dict of the connection data at the end of the file
-skip_rows_needed_for_connection_table = find_row_number(filename, "// Connections:")
-df_Connection = read_connection_data(filename, skip_rows_needed_for_connection_table)
-connection_timetable_dict = create_sub_data_frames_dict_from_dataframe(df_VIA_Timetable, 'Train_ID')
+
+    
 
 ##-----------MAX_RUNTIME-------------------------------------------------------------------------------------------------
    
@@ -663,7 +666,6 @@ def test_box1():
 #S3 commands to run
 
 connection_check_for_dwell_S3_S4("40:00",scenario)
-# #FIX THIS ONE FOR NEW RECUIRMENT
 connection_time_check_for_NRT_S3_S4("30:00","10:00",scenario)
 check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Cross Icon", "yes", "Guildwood Station",60,scenario)
 check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 2", "Oakville Station",60,scenario)
