@@ -4,7 +4,7 @@ from datetime import datetime, timedelta , time
 import time
 start_time = time.time()
 #--------------DATA_PREP----------------------------------------------------------------------------------------------
-def row_selector_based_on_weekdayendwith_values(file_path,sheet_name,what_type_of_day):
+def row_selector_based_on_weekdayend_with_values(file_path,sheet_name,what_type_of_day):
     df = pd.read_excel(file_path, sheet_name=sheet_name)
     columns_to_keep = ['Train_ID', 'Arrival Time', 'Departure Time', 'Cross Icon', 'Table', 'Bound', 'Star Icon', 'select_all', 'Train_Type']
     df_filtered = df[columns_to_keep]
@@ -96,7 +96,7 @@ filename = "0710 network timetable 2023-07-13.txt"
 #S1B: weekday   no connection     S2B: weekend no connection 
 #S3B: weekday.1 no connection     S4B: weekend no connection
 scenario = "S3"
-#Is the timetable weekday?weeknd?both?
+#Is the timetable weekday? weekend? both?
 
 
 skip_rows_needed_for_time_table = find_row_number(filename, "// Connections:")
@@ -104,7 +104,7 @@ search_word = "VIA"
 replacement_dict = {"HH:MM:SS": "00:00:00", "XX:XX:XX": "00:00:00"}
 
 #Create DF of timetable
-#Handle no conection table CASE
+#Handle no connection table CASE
 if skip_rows_needed_for_time_table == None:
     df_Timetable = read_timetable_data(filename, 13, None)
     df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
@@ -121,11 +121,9 @@ else:
 Via_df_Timetable_dict = create_sub_data_frames_dict_from_dataframe(df_VIA_Timetable, "Train_ID")
 
 #Create Excel input df
-VIA_Train_Input_criteria = row_selector_based_on_weekdayendwith_values('InputExcel.xlsx','Sheet1',scenario_selector(scenario))
+VIA_Train_Input_criteria = row_selector_based_on_weekdayend_with_values('InputExcel.xlsx','Sheet1',scenario_selector(scenario))
 VIA_Train_Input_criteria_dict = create_sub_data_frames_dict_for_input_file(VIA_Train_Input_criteria, 'Train_ID')
 
-
-    
 
 ##-----------MAX_RUNTIME-------------------------------------------------------------------------------------------------
    
@@ -170,7 +168,7 @@ def max_runtime_for_train_S3_S4(dictionary, station_start, station_end, max_run_
         max_run_time_converted = datetime.strptime(max_run_time,"%H:%M:%S") - datetime.strptime("00:00:00", "%H:%M:%S")
         
         if time_diff <= max_run_time_converted:
-            print(f"The Train {key} runtime for the stations selected is below the the max, {time_diff}")
+            print(f"The Train {key} runtime for the stations selected is below the the max,{max_run_time}, with time {time_diff}")
         else:
             print(f"{key} failed Max Run Time of {max_run_time}, actual runtime: {time_diff}. Between {station_start} and {station_end}")
     return True
@@ -212,7 +210,7 @@ def max_runtime_for_train_S1_S2(dictionary, station_start, station_end, max_run_
         max_run_time_converted = datetime.strptime(max_run_time,"%H:%M:%S") - datetime.strptime("00:00:00", "%H:%M:%S")
         
         if time_diff <= max_run_time_converted:
-            print(f"The Train {key} runtime for the stations selected is below the the max, {time_diff}")
+            print(f"The Train {key} runtime for the stations selected is below the the max {max_run_time}, with time {time_diff}")
         else:
             print(f"{key} failed Max Run Time of {max_run_time}, actual runtime: {time_diff}. Between {station_start} and {station_end}")
     return True
@@ -422,7 +420,6 @@ def keys_with_values(df,column_true_value1,column_name1,column_true_value2, colu
     
     return keys_with_yes_value 
 
-#TODO: FIX THE CASE WITH / IN THE TRAIN ID, THEY ARE NOT FOUND AS THE FINAL PART, EG: possible error with VIA50/60.1 possible error with VIA52/62.1  
 def filter_nrt_connection_S3_S4(criteria_dict, col_name_of_identifier, col_true_value, bound_direction,Bound,scenario):
     keys_to_check = keys_with_values(criteria_dict, col_true_value, col_name_of_identifier, bound_direction, Bound)
     nrt_connection_dictionary = {}
@@ -668,12 +665,34 @@ def test_box1():
 #station_stop_check(Via_df_Timetable_dict,"Guildwood")
 
 #S3 commands to run
-
-# connection_check_for_dwell_S3_S4("40:00",scenario)
-# connection_time_check_for_NRT_S3_S4("30:00","10:00",scenario)
 check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Cross Icon", "yes", "Guildwood Station",60,scenario)
 check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 2", "Oakville Station",60,scenario)
 check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 2", "Aldershot Station",60,scenario)
+
+connection_check_for_dwell_S3_S4("40:00",scenario)
+connection_time_check_for_NRT_S3_S4("30:00","10:00",scenario)
+check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Arrival Time","Inbound")
+check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Departure Time","Outbound")
+max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Burlington Junction","00:44:00",scenario)
+max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Durham Jct/Pickering Jct","00:35:00",scenario)
+max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Agincourt Junction","00:20:00",scenario)
+max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Burlington Junction","Aldershot Station","00:15:00",scenario)
+max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Aldershot Station","Bayview Jct","00:10:00",scenario)
+max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Halwest Junction","00:29:00",scenario)
+max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Georgetown Station","Kitchener Station","00:55:00",scenario)
+max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Snider North Turnback","00:35:00",scenario)
+max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Snider North Turnback","Doncaster","00:04:00",scenario)
+max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Glencrest Loop","Union Station","00:30:00",scenario)
+
+#S4 commands to run
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Malton Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Brampton Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Georgetown Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Guelph Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Kitchener Station",60,scenario)
+
+# connection_check_for_dwell_S3_S4("40:00",scenario)
+# connection_time_check_for_NRT_S3_S4("30:00","10:00",scenario)
 # check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Arrival Time","Inbound")
 # check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Departure Time","Outbound")
 # max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Burlington Junction","00:44:00",scenario)
@@ -686,14 +705,6 @@ check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetabl
 # max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Snider North Turnback","00:35:00",scenario)
 # max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Snider North Turnback","Doncaster","00:04:00",scenario)
 # max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Glencrest Loop","Union Station","00:30:00",scenario)
-
-#s4
-# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Malton Station",60,scenario)
-# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Brampton Station",60,scenario)
-# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Georgetown Station",60,scenario)
-# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Guelph Station",60,scenario)
-# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Kitchener Station",60,scenario)
-
 
 
 
@@ -724,8 +735,8 @@ print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
 #------------------------------------------------------------------------------------------------------------
 
-#TODO: Write a a startign senario where there is no connection table S1 OR S2
 #TODO: fix test boxes.
+#TODO: make a complicenec log and a non complace log, save msgs to a dataframe and print in ecel
 
 
 #if the train appears in both weekday and weekend, record the information, use the same train name but set day to weekend or weekday
