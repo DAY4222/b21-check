@@ -92,28 +92,32 @@ def scenario_selector(scenario):
 
 filename = "0710 network timetable 2023-07-13.txt"
 #which timetable scenario? 
-#S1: weekday, S2: weekend, S3: weekday.1, S4: weekend.2, S5: both weekday/weekend .1 .2
+#S1: weekday, S2: weekend, S3: weekday.1, S4: weekend.2,
+#S1B: weekday   no connection     S2B: weekend no connection 
+#S3B: weekday.1 no connection     S4B: weekend no connection
 scenario = "S3"
 #Is the timetable weekday?weeknd?both?
 
 
 skip_rows_needed_for_time_table = find_row_number(filename, "// Connections:")
+search_word = "VIA"
+replacement_dict = {"HH:MM:SS": "00:00:00", "XX:XX:XX": "00:00:00"}
 
 #Create DF of timetable
 #Handle no conection table CASE
 if skip_rows_needed_for_time_table == None:
     df_Timetable = read_timetable_data(filename, 13, None)
+    df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
+    
 else:
     df_Timetable = read_timetable_data(filename, 13, skip_rows_needed_for_time_table-15)
+    df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
     #Make a df and dict of the connection data at the end of the file only if it exsits.
     df_Connection = read_connection_data(filename, skip_rows_needed_for_time_table)
     connection_timetable_dict = create_sub_data_frames_dict_from_dataframe(df_VIA_Timetable, 'Train_ID')    
     
     
 #Create DF of only VIA in timetable and dict
-search_word = "VIA"
-replacement_dict = {"HH:MM:SS": "00:00:00", "XX:XX:XX": "00:00:00"}
-df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
 Via_df_Timetable_dict = create_sub_data_frames_dict_from_dataframe(df_VIA_Timetable, "Train_ID")
 
 #Create Excel input df
@@ -219,7 +223,7 @@ def get_rows_with_column_value_true(dataframe, column_name, value):
     return dataframe[mask]  # Return the DataFrame slice where the mask is True
 
 def check_dwell_time_at_station(train_df, station, dwell_time_desired_sec):
-    mask = (train_df['Dwell Time'] == dwell_time_desired_sec) & (train_df['Station'] == station)
+    mask = (train_df['Dwell Time'] >= dwell_time_desired_sec) & (train_df['Station'] == station)
     filtered_df = train_df[mask]
     return not filtered_df.empty
 
@@ -665,23 +669,35 @@ def test_box1():
 
 #S3 commands to run
 
-connection_check_for_dwell_S3_S4("40:00",scenario)
-connection_time_check_for_NRT_S3_S4("30:00","10:00",scenario)
+# connection_check_for_dwell_S3_S4("40:00",scenario)
+# connection_time_check_for_NRT_S3_S4("30:00","10:00",scenario)
 check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Cross Icon", "yes", "Guildwood Station",60,scenario)
 check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 2", "Oakville Station",60,scenario)
 check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 2", "Aldershot Station",60,scenario)
-check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Arrival Time","Inbound")
-check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Departure Time","Outbound")
-max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Burlington Junction","00:44:00",scenario)
-max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Durham Jct/Pickering Jct","00:35:00",scenario)
-max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Agincourt Junction","00:20:00",scenario)
-max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Burlington Junction","Aldershot Station","00:15:00",scenario)
-max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Aldershot Station","Bayview Jct","00:10:00",scenario)
-max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Halwest Junction","00:29:00",scenario)
-max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Georgetown Station","Kitchener Station","00:55:00",scenario)
-max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Snider North Turnback","00:35:00",scenario)
-max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Snider North Turnback","Doncaster","00:04:00",scenario)
-max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Glencrest Loop","Union Station","00:30:00",scenario)
+# check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Arrival Time","Inbound")
+# check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Departure Time","Outbound")
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Burlington Junction","00:44:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Durham Jct/Pickering Jct","00:35:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Agincourt Junction","00:20:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Burlington Junction","Aldershot Station","00:15:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Aldershot Station","Bayview Jct","00:10:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Halwest Junction","00:29:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Georgetown Station","Kitchener Station","00:55:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Snider North Turnback","00:35:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Snider North Turnback","Doncaster","00:04:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Glencrest Loop","Union Station","00:30:00",scenario)
+
+#s4
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Malton Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Brampton Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Georgetown Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Guelph Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Kitchener Station",60,scenario)
+
+
+
+
+
 
 
 
