@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta , time
 import time
+import logging
 start_time = time.time()
 #--------------DATA_PREP----------------------------------------------------------------------------------------------
 def row_selector_based_on_weekdayend_with_values(file_path,sheet_name,what_type_of_day):
@@ -90,12 +91,12 @@ def scenario_selector(scenario):
     
 #-------------Initialize_data_frames_set_scenario-----------------------------------------------------------------------------------------------
 
-filename = "0710 network timetable 2023-07-13.txt"
+filename = "NetworkTimetable0727_Weekend.txt"
 #which timetable scenario? 
 #S1: weekday, S2: weekend, S3: weekday.1, S4: weekend.2,
 #S1B: weekday   no connection     S2B: weekend no connection 
 #S3B: weekday.1 no connection     S4B: weekend no connection
-scenario = "S3"
+scenario = "S4"
 #Is the timetable weekday? weekend? both?
 
 
@@ -105,16 +106,18 @@ replacement_dict = {"HH:MM:SS": "00:00:00", "XX:XX:XX": "00:00:00"}
 
 #Create DF of timetable
 #Handle no connection table CASE
-if skip_rows_needed_for_time_table == None:
-    df_Timetable = read_timetable_data(filename, 13, None)
-    df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
+df_Timetable = read_timetable_data(filename, 13, skip_rows_needed_for_time_table-15)
+df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
+# if skip_rows_needed_for_time_table == None:
+#     df_Timetable = read_timetable_data(filename, 13, None)
+#     df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
     
-else:
-    df_Timetable = read_timetable_data(filename, 13, skip_rows_needed_for_time_table-15)
-    df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
-    #Make a df and dict of the connection data at the end of the file only if it exsits.
-    df_Connection = read_connection_data(filename, skip_rows_needed_for_time_table)
-    connection_timetable_dict = create_sub_data_frames_dict_from_dataframe(df_VIA_Timetable, 'Train_ID')    
+# else:
+#     df_Timetable = read_timetable_data(filename, 13, skip_rows_needed_for_time_table-15)
+#     df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
+#     #Make a df and dict of the connection data at the end of the file only if it exsits.
+#     df_Connection = read_connection_data(filename, skip_rows_needed_for_time_table)
+#     connection_timetable_dict = create_sub_data_frames_dict_from_dataframe(df_VIA_Timetable, 'Train_ID')    
     
     
 #Create DF of only VIA in timetable and dict
@@ -125,10 +128,16 @@ VIA_Train_Input_criteria = row_selector_based_on_weekdayend_with_values('InputEx
 VIA_Train_Input_criteria_dict = create_sub_data_frames_dict_for_input_file(VIA_Train_Input_criteria, 'Train_ID')
 
 
+##-----------Logging-------------------------------------------------------------------------------------------------
+
+non_compliance_logs_list = []
+compliance_logs_list = []
+
+
 ##-----------MAX_RUNTIME-------------------------------------------------------------------------------------------------
    
 def max_runtime_for_train_S3_S4(dictionary, station_start, station_end, max_run_time,scenario):
-
+    
     if len(dictionary) == 0:
         return None
     
@@ -139,7 +148,8 @@ def max_runtime_for_train_S3_S4(dictionary, station_start, station_end, max_run_
             key = key + ".2"
         
         if key not in dictionary:
-            print(f"Train {key} is not found in timetable given")
+            msg2 = f"Train {key} is not found in the timetable given"
+            non_compliance_logs_list.append(msg2)
             continue
             
         df = dictionary[key]
@@ -168,9 +178,16 @@ def max_runtime_for_train_S3_S4(dictionary, station_start, station_end, max_run_
         max_run_time_converted = datetime.strptime(max_run_time,"%H:%M:%S") - datetime.strptime("00:00:00", "%H:%M:%S")
         
         if time_diff <= max_run_time_converted:
-            print(f"The Train {key} runtime for the stations selected is below the the max,{max_run_time}, with time {time_diff}")
+            log_msg = f"The Train {key} runtime for the stations selected is below the max {max_run_time}, with time {time_diff}"
+            compliance_logs_list.append(log_msg)
+
+            # print(f"The Train {key} runtime for the stations selected is below the the max,{max_run_time}, with time {time_diff}")
+
         else:
-            print(f"{key} failed Max Run Time of {max_run_time}, actual runtime: {time_diff}. Between {station_start} and {station_end}")
+            log_msg = f"{key} failed Max Run Time of {max_run_time}, actual runtime: {time_diff}. Between {station_start} and {station_end}"
+            non_compliance_logs_list.append(log_msg)
+
+            # print(f"{key} failed Max Run Time of {max_run_time}, actual runtime: {time_diff}. Between {station_start} and {station_end}")
     return True
 
 def max_runtime_for_train_S1_S2(dictionary, station_start, station_end, max_run_time):
@@ -182,7 +199,8 @@ def max_runtime_for_train_S1_S2(dictionary, station_start, station_end, max_run_
      
         
         if key not in dictionary:
-            print(f"Train {key} is not found in timetable given")
+            msg2 = f"Train {key} is not found in the timetable given"
+            non_compliance_logs_list.append(msg2)
             continue
             
         df = dictionary[key]
@@ -210,9 +228,11 @@ def max_runtime_for_train_S1_S2(dictionary, station_start, station_end, max_run_
         max_run_time_converted = datetime.strptime(max_run_time,"%H:%M:%S") - datetime.strptime("00:00:00", "%H:%M:%S")
         
         if time_diff <= max_run_time_converted:
-            print(f"The Train {key} runtime for the stations selected is below the the max {max_run_time}, with time {time_diff}")
+            log_msg = f"The Train {key} runtime for the stations selected is below the max {max_run_time}, with time {time_diff}"
+            compliance_logs_list.append(log_msg)
         else:
-            print(f"{key} failed Max Run Time of {max_run_time}, actual runtime: {time_diff}. Between {station_start} and {station_end}")
+            log_msg = f"{key} failed Max Run Time of {max_run_time}, actual runtime: {time_diff}. Between {station_start} and {station_end}"
+            non_compliance_logs_list.append(log_msg)
     return True
 
 #---------------Dwell_recruitment check---------------------------------------------------------------------------------------------
@@ -241,11 +261,14 @@ def check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(dictionary,
             satisfies_condition = check_dwell_time_at_station(train_df, station, dwell_time_desired_sec)
             
             if satisfies_condition:
-                print(f"The Train '{key}' satisfies the condition: Dwell Time is {dwell_time_desired_sec} seconds at {station}.")
+                log_msg = f"The Train '{key}' satisfies the condition: Dwell Time is {dwell_time_desired_sec} seconds at {station}."
+                compliance_logs_list.append(log_msg)
             else:
-                print(f"The Train '{key}' does NOT satisfy the condition: Dwell Time is {dwell_time_desired_sec} seconds at {station}.")
+                log_msg= f"The Train '{key}' does NOT satisfy the condition: Dwell Time is {dwell_time_desired_sec} seconds at {station}."
+                non_compliance_logs_list.append(log_msg)
         else:
-            print(f"The key '{key}' does not exist in the dictionary.")
+            log_msg = "The key '{key}' does not exist in the dictionary."
+            non_compliance_logs_list.append(log_msg)
 
 def check_if_selected_category_dwells_on_station_based_on_icon_S1_S2(dictionary, icon, icon_valid_value, station,dwell_time_desired_sec):
     result = []
@@ -258,11 +281,14 @@ def check_if_selected_category_dwells_on_station_based_on_icon_S1_S2(dictionary,
             satisfies_condition = check_dwell_time_at_station(train_df, station, dwell_time_desired_sec)
             
             if satisfies_condition:
-                print(f"The Train '{key}' satisfies the condition: Dwell Time is {dwell_time_desired_sec} seconds at {station}.")
+                log_msg = f"The Train '{key}' satisfies the condition: Dwell Time is {dwell_time_desired_sec} seconds at {station}."
+                compliance_logs_list.append(log_msg)
             else:
-                print(f"The Train '{key}' does NOT satisfy the condition: Dwell Time is {dwell_time_desired_sec} seconds at {station}.")
+                log_msg= f"The Train '{key}' does NOT satisfy the condition: Dwell Time is {dwell_time_desired_sec} seconds at {station}."
+                non_compliance_logs_list.append(log_msg)
         else:
-            print(f"The key '{key}' does not exist in the dictionary.")
+            log_msg = "The key '{key}' does not exist in the dictionary."
+            non_compliance_logs_list.append(log_msg)
 
 #this function retrieves a specific value from a DataFrame based on a search key and the corresponding key and value columns.                   
 
@@ -322,7 +348,7 @@ def get_correct_row_(df,value_column):
 #value Colum is the criteria you want to check , arrival dep time ect..
 #TODO: abstract 900 use the range to make the range no need 900 seconds.
 
-def check_last_value_in_range_S3_S4(df, value_column,bound_value):
+def check_last_value_in_range_S3_S4(df, value_column,bound_value,total_flex_max_criteria):
     total_over_range = 0  # Variable to store the total time over the 15-minute range
 
     for name, df in df.items():
@@ -346,7 +372,8 @@ def check_last_value_in_range_S3_S4(df, value_column,bound_value):
         
         if criteria_from_table_1_input is None:
             if name not in VIA_Train_Input_criteria_dict.keys():
-                print("No matching entry found for {} in VIA_Train_Input_criteria.".format(name))
+                msg2 = "No matching entry found for {} in VIA_Train_Input_criteria.".format(name)
+                non_compliance_logs_list.append(msg2)
             continue
         
         input_given_time = datetime.strptime(input_timetable_time, "%H:%M:%S") - datetime.strptime("00:00:00", "%H:%M:%S")
@@ -356,17 +383,22 @@ def check_last_value_in_range_S3_S4(df, value_column,bound_value):
 
         # Display messages based on the comparison
         if is_in_range:
-            print(f"Punctuality for {name} is within the 15 min range of {range_mid} with time {input_given_time}")
+            log_msg=f"Punctuality for {name} is within the 15 min range of {range_mid} with time {input_given_time}"
+            compliance_logs_list.append(log_msg)
         else:
             time_over_range = abs(input_given_time.total_seconds() - range_mid.total_seconds()) - 900
             total_over_range += time_over_range
             time_over_range_minutes = (time_over_range/60)
            
-            print(f"Punctuality for {name} is NOT within the 15 min range of {range_mid}")
-            print(f"The train is over the range by {time_over_range_minutes} minutes.")
-            
+            log_msg = f"Punctuality for {name} is NOT within the 15 min range of {range_mid}, The train is over the range by {time_over_range_minutes} minutes."
+            non_compliance_logs_list.append(log_msg)
+
     total_over_range_minutes = total_over_range / 60
-    print(f"\nTotal time over the 15-minute range: {total_over_range_minutes} minutes.")
+    if total_over_range_minutes > total_flex_max_criteria:
+        print(f"\nTotal time over the 15-minute range: {total_over_range_minutes} minutes. EXCEEDS {total_flex_max_criteria} LIMIT")
+    else:
+        log_msg = f"\nTotal time over the 15-minute range: {total_over_range_minutes} minutes. Does NOT exceeds {total_flex_max_criteria} LIMIT"
+        compliance_logs_list.append(log_msg)
     return True
 
 def check_last_value_in_range_S1_S2(df, value_column,bound_value):
@@ -387,7 +419,8 @@ def check_last_value_in_range_S1_S2(df, value_column,bound_value):
         if 'E' in name:
             continue
         if criteria_from_table_1_input is None:
-            print("No matching entry found for {} in VIA_Train_Input_criteria.".format(name))
+            msg2 = "No matching entry found for {} in VIA_Train_Input_criteria.".format(name)
+            non_compliance_logs_list.append(msg2)
             continue 
         
         input_given_time = datetime.strptime(input_timetable_time, "%H:%M:%S") - datetime.strptime("00:00:00", "%H:%M:%S")
@@ -397,19 +430,23 @@ def check_last_value_in_range_S1_S2(df, value_column,bound_value):
 
         # Display messages based on the comparison
         if is_in_range:
-            print(f"Punctuality for {name} is within the 15 min range of {range_mid} with time {input_given_time}")
+            log_msg=f"Punctuality for {name} is within the 15 min range of {range_mid} with time {input_given_time}"
+            compliance_logs_list.append(log_msg)
         else:
             time_over_range = abs(input_given_time.total_seconds() - range_mid.total_seconds()) - 900
             total_over_range += time_over_range
             time_over_range_minutes = (time_over_range/60)
            
-            print(f"Punctuality for {name} is NOT within the 15 min range of {range_mid}")
-            print(f"The train is over the range by {time_over_range_minutes} minutes.")
+            logmsg = f"Punctuality for {name} is NOT within the 15 min range of {range_mid}, The train is over the range by {time_over_range_minutes} minutes."
+            non_compliance_logs_list.append(logmsg)
             
     total_over_range_minutes = total_over_range / 60
-    print(f"\nTotal time over the 15-minute range: {total_over_range_minutes} minutes.")
+    if total_over_range_minutes > total_flex_max_criteria:
+        print(f"\nTotal time over the 15-minute range: {total_over_range_minutes} minutes. EXCEEDS {total_flex_max_criteria} LIMIT")
+    else:
+        log_msg = f"\nTotal time over the 15-minute range: {total_over_range_minutes} minutes. Does NOT exceeds {total_flex_max_criteria} LIMIT"
+        compliance_logs_list.append(log_msg)
     return True
-
 #------------------------------------------------------------------------------------------------------------
 
 def keys_with_values(df,column_true_value1,column_name1,column_true_value2, column_name2):
@@ -441,10 +478,12 @@ def filter_nrt_connection_S3_S4(criteria_dict, col_name_of_identifier, col_true_
         nrt_that_matches = df_Connection.loc[(df_Connection[column_to_look_for_key] == modified_train_id) &
                                              (df_Connection['ConnectionType'] == connection_type), column_nrt_found]
         if nrt_that_matches.empty:
-            print(f"No matching NRT found for train {train_id}.")
+            log_msg = f"No matching NRT found for train {train_id}."
+            non_compliance_logs_list.append(log_msg)
             continue
         if 'E' not in nrt_that_matches.iat[0]:
-            print(f"No matching NRT found for train {train_id}, connection 2 is train: {nrt_that_matches.iat[0]}.")
+            log_msg = f"No matching NRT found for train {train_id}, connection 2 is train: {nrt_that_matches.iat[0]}."
+            non_compliance_logs_list.append(log_msg)
             continue
         if not nrt_that_matches.empty and nrt_that_matches.iat[0] in connection_timetable_dict.keys():
             nrt_connection_dictionary[train_id] = nrt_that_matches.iat[0]
@@ -467,10 +506,12 @@ def filter_nrt_connection_S1_S2(criteria_dict, col_name_of_identifier, col_true_
         nrt_that_matches = df_Connection.loc[(df_Connection[column_to_look_for_key] == train_id) &
                                              (df_Connection['ConnectionType'] == connection_type), column_nrt_found]
         if nrt_that_matches.empty:
-            print(f"No matching NRT found for train {train_id}.")
+            log_msg = f"No matching NRT found for train {train_id}."
+            non_compliance_logs_list.append(log_msg)
             continue
         if 'E' not in nrt_that_matches.iat[0]:
-            print(f"No matching NRT found for train {train_id}, connection 2 is train: {nrt_that_matches.iat[0]}.")
+            log_msg = f"No matching NRT found for train {train_id}, connection 2 is train: {nrt_that_matches.iat[0]}."
+            non_compliance_logs_list.append(log_msg)
             continue
         if not nrt_that_matches.empty and nrt_that_matches.iat[0] in connection_timetable_dict.keys():
             nrt_connection_dictionary[train_id] = nrt_that_matches.iat[0]
@@ -484,13 +525,15 @@ def nrt_check_S3_S4(criteria_dict, col_name_of_identifier, col_true_value, bound
             modified_train_id = train_id + ".1"
         if  scenario == "S4":
             modified_train_id = train_id + ".2"
-        print(f"{train_id} has a matching NRT. The matching NRT for {train_id} is: {nrt_value}")
+        log_msg = f"{train_id} has a matching NRT. The matching NRT for {train_id} is: {nrt_value}"
+        compliance_logs_list.append(log_msg)
     return True
 
 def nrt_check_S1_S2(criteria_dict, col_name_of_identifier, col_true_value, bound_direction, Bound):
     nrt_connection_dictionary = filter_nrt_connection_S3_S4(criteria_dict, col_name_of_identifier,col_true_value, bound_direction, Bound)
     for train_id, nrt_value in nrt_connection_dictionary.items():
-        print(f"{train_id} has a matching NRT. The matching NRT for {train_id} is: {nrt_value}")
+        log_msg = f"{train_id} has a matching NRT. The matching NRT for {train_id} is: {nrt_value}"
+        compliance_logs_list.append(log_msg)
     return True
 
 #------------------------------------------------------------------------------------------------------------
@@ -516,7 +559,8 @@ def connection_check_for_dwell_S3_S4(criteria_time,scenario):
         dwell_time = df_Connection.loc[(df_Connection[column_to_look_for_key] == modified_train_id) & 
                                     (df_Connection['ConnectionType'] == connection_type), :]
         if dwell_time.empty:
-            print(f"No matching Connection train found for train {Train_ID}.")
+            log_msg = f"No matching Connection train found for train {Train_ID}."
+            non_compliance_logs_list.append(log_msg)
             continue
         
         time_string = dwell_time["ConnChangeTime"].values[0]
@@ -524,8 +568,15 @@ def connection_check_for_dwell_S3_S4(criteria_time,scenario):
         connection_Train_ID = dwell_time[column_nrt_found].values[0]
         criteria = datetime.strptime(criteria_time,"%M:%S").time()
         if 'E' not in connection_Train_ID:
+            
+            if time_object >= criteria :
+                log_msg = f"{Train_ID} with connection {connection_Train_ID} does meet minimum dwell time at union of {criteria} MINS with {time_object}"
+                compliance_logs_list.append(log_msg)
+
             if time_object < criteria :
-                print(f"{Train_ID} with connection {connection_Train_ID} does not meet minimum dwell time at union of {criteria} MINS with {time_object}")
+                log_msg = f"{Train_ID} with connection {connection_Train_ID} does not meet minimum dwell time at union of {criteria} MINS with {time_object}"
+                non_compliance_logs_list.append(log_msg)
+
             continue
 def connection_check_for_dwell_S1_S2(criteria_time):
     
@@ -544,7 +595,9 @@ def connection_check_for_dwell_S1_S2(criteria_time):
         dwell_time = df_Connection.loc[(df_Connection[column_to_look_for_key] == Train_ID) & 
                                     (df_Connection['ConnectionType'] == connection_type), :]
         if dwell_time.empty:
-            print(f"No matching Connection train found for train {Train_ID}.")
+            log_msg = f"No matching Connection train found for train {Train_ID}."
+            non_compliance_logs_list.append(log_msg)
+
             continue
         
         time_string = dwell_time["ConnChangeTime"].values[0]
@@ -552,8 +605,15 @@ def connection_check_for_dwell_S1_S2(criteria_time):
         connection_Train_ID = dwell_time[column_nrt_found].values[0]
         criteria = datetime.strptime(criteria_time,"%M:%S").time()
         if 'E' not in connection_Train_ID:
+            
+            if time_object >= criteria :
+                log_msg = f"{Train_ID} with connection {connection_Train_ID} does meet minimum dwell time at union of {criteria} MINS with {time_object}"
+                compliance_logs_list.append(log_msg)
+
             if time_object < criteria :
-                print(f"{Train_ID} with connection {connection_Train_ID} does not meet minimum dwell time at union of {criteria} MINS with {time_object}")
+                log_msg = f"{Train_ID} with connection {connection_Train_ID} does not meet minimum dwell time at union of {criteria} MINS with {time_object}"
+                non_compliance_logs_list.append(log_msg)
+
             continue
 
 #------------------------------------------------------------------------------------------------------------
@@ -581,7 +641,8 @@ def connection_time_check_for_NRT_S3_S4(criteria_time_NRT_to_Outbound,criteria_t
         dwell_time = df_Connection.loc[(df_Connection[column_to_look_for_key] == modified_train_id) & 
                                     (df_Connection['ConnectionType'] == connection_type), :]
         if dwell_time.empty:
-            print(f"No matching Connection train found for train {Train_ID}.")
+            log_msg = f"No matching Connection train found for train {Train_ID}."
+            non_compliance_logs_list.append(log_msg)
             continue
         
         time_string = dwell_time["ConnChangeTime"].values[0]
@@ -590,8 +651,13 @@ def connection_time_check_for_NRT_S3_S4(criteria_time_NRT_to_Outbound,criteria_t
         criteria = datetime.strptime(criteria,"%M:%S").time()
         if 'E' not in connection_Train_ID:
             continue 
-        if  time_object < criteria:
-            print(f"{Train_ID} with connection {connection_Train_ID} does not meet minimum dwell time at union of {criteria} MINS with {time_object}")
+            if time_object >= criteria :
+                log_msg = f"{Train_ID} with connection {connection_Train_ID} does meet minimum dwell time at union of {criteria} MINS with {time_object}"
+                compliance_logs_list.append(log_msg)
+
+            if time_object < criteria :
+                log_msg = f"{Train_ID} with connection {connection_Train_ID} does not meet minimum dwell time at union of {criteria} MINS with {time_object}"
+                non_compliance_logs_list.append(log_msg)
     return True
 
 def connection_time_check_for_NRT_S1_S2(criteria_time_NRT_to_Outbound,criteria_time_Inbound_to_NRT):
@@ -613,7 +679,8 @@ def connection_time_check_for_NRT_S1_S2(criteria_time_NRT_to_Outbound,criteria_t
         dwell_time = df_Connection.loc[(df_Connection[column_to_look_for_key] == Train_ID) & 
                                     (df_Connection['ConnectionType'] == connection_type), :]
         if dwell_time.empty:
-            print(f"No matching Connection train found for train {Train_ID}.")
+            log_msg = f"No matching Connection train found for train {Train_ID}."
+            non_compliance_logs_list.append(log_msg)
             continue
         
         time_string = dwell_time["ConnChangeTime"].values[0]
@@ -622,8 +689,13 @@ def connection_time_check_for_NRT_S1_S2(criteria_time_NRT_to_Outbound,criteria_t
         criteria = datetime.strptime(criteria,"%M:%S").time()
         if 'E' not in connection_Train_ID:
             continue 
-        if  time_object < criteria:
-            print(f"{Train_ID} with connection {connection_Train_ID} does not meet minimum dwell time at union of {criteria} MINS with {time_object}")
+        if time_object >= criteria :
+            log_msg = f"{Train_ID} with connection {connection_Train_ID} does meet minimum dwell time at union of {criteria} MINS with {time_object}"
+            compliance_logs_list.append(log_msg)
+
+        if time_object < criteria :
+            log_msg = f"{Train_ID} with connection {connection_Train_ID} does not meet minimum dwell time at union of {criteria} MINS with {time_object}"
+            non_compliance_logs_list.append(log_msg)
     return True
 
 #------------------------------------------------------------------------------------------------------------
@@ -664,15 +736,47 @@ def test_box1():
 #------------------------------------------------------------------------------------------------------------
 #station_stop_check(Via_df_Timetable_dict,"Guildwood")
 
-#S3 commands to run
-check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Cross Icon", "yes", "Guildwood Station",60,scenario)
-check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 2", "Oakville Station",60,scenario)
-check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 2", "Aldershot Station",60,scenario)
+# #S3 commands to run
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Cross Icon", "yes", "Guildwood Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 2", "Oakville Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 2", "Aldershot Station",60,scenario)
 
-connection_check_for_dwell_S3_S4("40:00",scenario)
-connection_time_check_for_NRT_S3_S4("30:00","10:00",scenario)
-check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Arrival Time","Inbound")
-check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Departure Time","Outbound")
+# connection_check_for_dwell_S3_S4("40:00",scenario)
+
+# connection_time_check_for_NRT_S3_S4("30:00","10:00",scenario)
+
+
+# nrt_check_S3_S4(VIA_Train_Input_criteria_dict,"Star Icon", "yes","Outbound","Bound")
+# nrt_check_S3_S4(VIA_Train_Input_criteria_dict,"Star Icon", "yes","Inbound","Bound")
+
+# check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Arrival Time","Inbound",300)
+# check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Departure Time","Outbound",300)
+
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Burlington Junction","00:44:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Durham Jct/Pickering Jct","00:35:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Agincourt Junction","00:20:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Burlington Junction","Aldershot Station","00:15:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Aldershot Station","Bayview Jct","00:10:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Halwest Junction","00:29:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Georgetown Station","Kitchener Station","00:55:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Snider North Turnback","00:35:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Snider North Turnback","Doncaster","00:04:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Glencrest Loop","Union Station","00:30:00",scenario)
+#------------------------------------------------------------------------------------------------------------
+
+#S4b commands to run
+#checking dwell and stop 
+check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Malton Station",60,scenario)
+check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Brampton Station",60,scenario)
+check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Georgetown Station",60,scenario)
+check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Guelph Station",60,scenario)
+check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Kitchener Station",60,scenario)
+
+
+check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Arrival Time","Inbound",300)
+
+check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Departure Time","Outbound",300)
+
 max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Burlington Junction","00:44:00",scenario)
 max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Durham Jct/Pickering Jct","00:35:00",scenario)
 max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Agincourt Junction","00:20:00",scenario)
@@ -684,33 +788,19 @@ max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Snider North 
 max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Snider North Turnback","Doncaster","00:04:00",scenario)
 max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Glencrest Loop","Union Station","00:30:00",scenario)
 
-#S4 commands to run
-# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Malton Station",60,scenario)
-# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Brampton Station",60,scenario)
-# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Georgetown Station",60,scenario)
-# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Guelph Station",60,scenario)
-# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Kitchener Station",60,scenario)
-
-# connection_check_for_dwell_S3_S4("40:00",scenario)
-# connection_time_check_for_NRT_S3_S4("30:00","10:00",scenario)
-# check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Arrival Time","Inbound")
-# check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Departure Time","Outbound")
-# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Burlington Junction","00:44:00",scenario)
-# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Durham Jct/Pickering Jct","00:35:00",scenario)
-# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Agincourt Junction","00:20:00",scenario)
-# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Burlington Junction","Aldershot Station","00:15:00",scenario)
-# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Aldershot Station","Bayview Jct","00:10:00",scenario)
-# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Halwest Junction","00:29:00",scenario)
-# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Georgetown Station","Kitchener Station","00:55:00",scenario)
-# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Snider North Turnback","00:35:00",scenario)
-# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Snider North Turnback","Doncaster","00:04:00",scenario)
-# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Glencrest Loop","Union Station","00:30:00",scenario)
 
 
+#------------LOG INFO-------------------------------------------------------------------------------------------
 
 
+non_compliance_df = pd.DataFrame({'Log Messages': non_compliance_logs_list})
+compliance_df = pd.DataFrame({'Log Messages': compliance_logs_list})
 
+print("\nFailed Cases:")
+print(non_compliance_df)
 
+print("\nPassed Cases:")
+print(compliance_df)
 
 print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
@@ -736,7 +826,6 @@ print("Process finished --- %s seconds ---" % (time.time() - start_time))
 #------------------------------------------------------------------------------------------------------------
 
 #TODO: fix test boxes.
-#TODO: make a complicenec log and a non complace log, save msgs to a dataframe and print in ecel
 
-
-#if the train appears in both weekday and weekend, record the information, use the same train name but set day to weekend or weekday
+#if the train appears in both weekday and weekend, record the information, use the same train name but set day to weekend or weekday\
+    
