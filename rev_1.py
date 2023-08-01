@@ -68,11 +68,15 @@ def filter_and_replace(df, search_word, replacement_dict):
     via_df.replace(replacement_dict)
     return via_df
 
+def count_lines_in_file(file_path):
+    with open(file_path, 'r') as file:
+        line_count = sum(1 for line in file)
+    return line_count
+
 def scenario_selector(scenario):
     if scenario == "S1":
         what_type_of_day = "BusinessDay"
         return what_type_of_day
-
     elif scenario == "S2":
         what_type_of_day = "WeekendDay"
         return what_type_of_day
@@ -88,7 +92,10 @@ def scenario_selector(scenario):
            
         return what_type_of_day
 
-    
+##-----------Logging-------------------------------------------------------------------------------------------------
+
+non_compliance_logs_list = []
+compliance_logs_list = []
 #-------------Initialize_data_frames_set_scenario-----------------------------------------------------------------------------------------------
 
 filename = "NetworkTimetable0727_Weekend.txt"
@@ -99,25 +106,31 @@ filename = "NetworkTimetable0727_Weekend.txt"
 scenario = "S4"
 #Is the timetable weekday? weekend? both?
 
-
+total_lines = count_lines_in_file(filename)
 skip_rows_needed_for_time_table = find_row_number(filename, "// Connections:")
 search_word = "VIA"
 replacement_dict = {"HH:MM:SS": "00:00:00", "XX:XX:XX": "00:00:00"}
 
-#Create DF of timetable
 #Handle no connection table CASE
-df_Timetable = read_timetable_data(filename, 13, skip_rows_needed_for_time_table-15)
-df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
-# if skip_rows_needed_for_time_table == None:
-#     df_Timetable = read_timetable_data(filename, 13, None)
-#     df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
+if skip_rows_needed_for_time_table == None:
+    df_Timetable = read_timetable_data(filename, 13, skip_rows_needed_for_time_table-15)
+    df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
+    msg4 = "NO CONNECTION TABLE IN TIMETABLE SELECTED, NOT EVEN CONNECTION TABLE HEADER"
+    non_compliance_logs_list.append(msg4)
+
+#Handle no connection table CASE but with connection header
+if total_lines-20 < skip_rows_needed_for_time_table:
+    df_Timetable = read_timetable_data(filename, 13, skip_rows_needed_for_time_table-15)
+    df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
+    msg4 = "NO CONNECTION TABLE IN TIMETABLE SELECTED"
+    non_compliance_logs_list.append(msg4)
     
-# else:
-#     df_Timetable = read_timetable_data(filename, 13, skip_rows_needed_for_time_table-15)
-#     df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
-#     #Make a df and dict of the connection data at the end of the file only if it exsits.
-#     df_Connection = read_connection_data(filename, skip_rows_needed_for_time_table)
-#     connection_timetable_dict = create_sub_data_frames_dict_from_dataframe(df_VIA_Timetable, 'Train_ID')    
+else:
+    df_Timetable = read_timetable_data(filename, 13, skip_rows_needed_for_time_table-15)
+    df_VIA_Timetable = filter_and_replace(df_Timetable, search_word, replacement_dict)
+    #Make a df and dict of the connection data at the end of the file only if it exsits.
+    df_Connection = read_connection_data(filename, skip_rows_needed_for_time_table)
+    connection_timetable_dict = create_sub_data_frames_dict_from_dataframe(df_VIA_Timetable, 'Train_ID')    
     
     
 #Create DF of only VIA in timetable and dict
@@ -126,12 +139,6 @@ Via_df_Timetable_dict = create_sub_data_frames_dict_from_dataframe(df_VIA_Timeta
 #Create Excel input df
 VIA_Train_Input_criteria = row_selector_based_on_weekdayend_with_values('InputExcel.xlsx','Sheet1',scenario_selector(scenario))
 VIA_Train_Input_criteria_dict = create_sub_data_frames_dict_for_input_file(VIA_Train_Input_criteria, 'Train_ID')
-
-
-##-----------Logging-------------------------------------------------------------------------------------------------
-
-non_compliance_logs_list = []
-compliance_logs_list = []
 
 
 ##-----------MAX_RUNTIME-------------------------------------------------------------------------------------------------
@@ -701,19 +708,19 @@ def connection_time_check_for_NRT_S1_S2(criteria_time_NRT_to_Outbound,criteria_t
 #------------------------------------------------------------------------------------------------------------
 
 def test_check_last_value_in_range():
-    assert check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Arrival Time","Inbound") == True
-    assert check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Departure Time","Outbound") == True
+    assert check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Arrival Time","Inbound",300) == True
+    assert check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Departure Time","Outbound",300) == True
 
 def test_nrt_check():
-    assert nrt_check_S3_S4(VIA_Train_Input_criteria_dict,"Star Icon", "yes","Outbound","Bound") == True
-    assert nrt_check_S3_S4(VIA_Train_Input_criteria_dict,"Star Icon", "yes","Inbound","Bound") == True
+    assert nrt_check_S3_S4(VIA_Train_Input_criteria_dict,"Star Icon", "yes","Outbound","Bound","S4") == True
+    assert nrt_check_S3_S4(VIA_Train_Input_criteria_dict,"Star Icon", "yes","Inbound","Bound","S4") == True
 
 def test_connection_time_check_for_NRT():
     assert connection_time_check_for_NRT_S3_S4("1:00","1:00")== True
 
 def test_max_runtime_for_train():
-    assert max_runtime_for_train_S3_S4({}, "Aldershot Station", "Burlington Junction", "00:15:00") == None
-    assert max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Burlington Junction","00:44:00") == True
+    assert max_runtime_for_train_S3_S4({}, "Aldershot Station", "Burlington Junction", "00:15:00","S4") == None
+    assert max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Burlington Junction","00:44:00","S4") == True
 
 def test_station_stop_check():
     assert station_stop_check(VIA_Train_Input_criteria_dict,"Guildwood Station") == True
@@ -727,7 +734,7 @@ def test_station_stop_check():
 
 def test_box1():
     test_max_runtime_for_train()
-    test_nrt_check()
+    # test_nrt_check()
     test_station_stop_check()
     test_check_last_value_in_range()
 
@@ -765,7 +772,7 @@ def test_box1():
 #------------------------------------------------------------------------------------------------------------
 
 #S4b commands to run
-#checking dwell and stop 
+
 check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Malton Station",60,scenario)
 check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Brampton Station",60,scenario)
 check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 5", "Georgetown Station",60,scenario)
@@ -788,7 +795,35 @@ max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Snider North 
 max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Snider North Turnback","Doncaster","00:04:00",scenario)
 max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Glencrest Loop","Union Station","00:30:00",scenario)
 
+#------------------------------------------------------------------------------------------------------------
 
+#S4 commands to run 
+
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Cross Icon", "yes", "Guildwood Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 2", "Oakville Station",60,scenario)
+# check_if_selected_category_dwells_on_station_based_on_icon_S3_S4(Via_df_Timetable_dict, "Table", "Table 2", "Aldershot Station",60,scenario)
+
+# connection_check_for_dwell_S3_S4("40:00",scenario)
+
+# connection_time_check_for_NRT_S3_S4("30:00","10:00",scenario)
+
+
+# nrt_check_S3_S4(VIA_Train_Input_criteria_dict,"Star Icon", "yes","Outbound","Bound")
+# nrt_check_S3_S4(VIA_Train_Input_criteria_dict,"Star Icon", "yes","Inbound","Bound")
+
+# check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Arrival Time","Inbound",300)
+# check_last_value_in_range_S3_S4(Via_df_Timetable_dict, "Departure Time","Outbound",300)
+
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Burlington Junction","00:44:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Durham Jct/Pickering Jct","00:35:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Agincourt Junction","00:20:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Burlington Junction","Aldershot Station","00:15:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Aldershot Station","Bayview Jct","00:10:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Halwest Junction","00:29:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Georgetown Station","Kitchener Station","00:55:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Union Station","Snider North Turnback","00:35:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Snider North Turnback","Doncaster","00:04:00",scenario)
+# max_runtime_for_train_S3_S4(Via_df_Timetable_dict,"Glencrest Loop","Union Station","00:30:00",scenario)
 
 #------------LOG INFO-------------------------------------------------------------------------------------------
 
