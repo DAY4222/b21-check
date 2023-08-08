@@ -1005,6 +1005,15 @@ print(non_compliance_df)
 print("\nPassed Cases:")
 print(compliance_df)
 
+# Create a Pandas Excel writer using XlsxWriter as the engine
+excel_writer = pd.ExcelWriter('Compliance Log and Non Compliance Log.xlsx', engine='xlsxwriter')
+
+# Write the DataFrames to Excel
+non_compliance_df.to_excel(excel_writer, sheet_name='Non Compliance Log', index=False)
+compliance_df.to_excel(excel_writer, sheet_name='Compliance Log', index=False)
+
+# Close the Pandas Excel writer and output the Excel file
+excel_writer.save()
 
 print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
