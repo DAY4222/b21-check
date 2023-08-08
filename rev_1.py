@@ -107,14 +107,14 @@ def create_gui():
     sg.theme('DarkGrey4')
 
     layout = [
-        [sg.Text('Select a file:', size=(15, 1), font=('Arial', 16, 'bold'))],
-        [sg.Input(key='-FILE-', enable_events=True, visible=False), sg.FileBrowse(font=('Arial', 12)), sg.Text('', size=(40, 1), key='-FILENAME-', font=('Arial', 12))],
-        [sg.Text('Select the scenario:', size=(20, 1), font=('Arial', 16, 'bold'))],
-        [sg.Combo(['S1', 'S2', 'S3', 'S4'], default_value='S4', key='-SCENARIO-', font=('Arial', 16))],
-        [sg.Button('Run', size=(8, 2), button_color=('white', 'green'), font=('Arial', 16))]
+        [sg.Text('Select a file:', size=(15, 1), font=('Helvetica', 16, 'bold'))],
+        [sg.Input(key='-FILE-', enable_events=True, visible=False), sg.FileBrowse(font=('Helvetica', 11)), sg.Multiline('', size=(60, 2), key='-FILENAME-', font=('Helvetica', 12))],
+        [sg.Text('Select the scenario:', size=(20, 1), font=('Helvetica', 16, 'bold'))],
+        [sg.Combo(['S1', 'S2', 'S3', 'S4'], default_value='S4', key='-SCENARIO-', font=('Helvetica', 16))],
+        [sg.Button('Run', size=(8, 2), button_color=('white', 'green'), font=('Helvetica', 16))]
     ]
 
-    window = sg.Window('Max Runtime Checker', layout, finalize=True)
+    window = sg.Window('Max Runtime Checker', layout,size=(600, 300), finalize=True)
 
     while True:
         event, values = window.read()
@@ -125,6 +125,10 @@ def create_gui():
             scenario = values['-SCENARIO-']
             
             break
+        elif event == '-FILE-':
+            filename = values['-FILE-']
+            window['-FILENAME-'].update(filename)  # Update the text element with the selected filename
+    
 
     window.close()
     return filename, scenario
@@ -1000,6 +1004,7 @@ print(non_compliance_df)
 
 print("\nPassed Cases:")
 print(compliance_df)
+
 
 print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
