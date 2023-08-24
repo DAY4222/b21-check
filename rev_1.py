@@ -781,7 +781,7 @@ def test_box1_for_S4():
     test_check_last_value_in_range()
 
 #NOTE: Durham Jct/Pickering Jct is Pickering Jct Stations need to be named as they are in the timetable,
-#sometimes they have diffrent names for the same station
+#sometimes they have different names for the same station
 
 #---------------------What test to run for each scenario-----------------------------------------------------------------------------
 
