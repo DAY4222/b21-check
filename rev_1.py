@@ -209,11 +209,6 @@ def max_runtime_for_train_S3_S4(dictionary, station_start, station_end, max_run_
         if len(start_df.index) == 0 or  start_df.values[0] == "HH:MM:SS":
             start_df = df.loc[df['Station'] == station_start,"Arrival Time"]   
         
-        if start_df.values[0] == "HH:MM:SS" or end_df.values[0] == "HH:MM:SS":
-            log_msg = f"{key} does not stop at one of the stations : {station_start} OR {station_end}"
-            non_compliance_logs_list.append(log_msg)
-        
-        
         if start_df.empty or end_df.empty:
             continue
        
@@ -263,10 +258,6 @@ def max_runtime_for_train_S1_S2(dictionary, station_start, station_end, max_run_
         if len(start_df.index) == 0 or  start_df.values[0] == "HH:MM:SS":
             start_df = df.loc[df['Station'] == station_start,"Arrival Time"]   
             
-        if start_df.values[0] == "HH:MM:SS" or end_df.values[0] == "HH:MM:SS":
-            log_msg = f"{key} does not stop at one of the stations : {station_start} OR {station_end}"
-            non_compliance_logs_list.append(log_msg)
-        
         
         if start_df.empty or end_df.empty:
             continue
@@ -412,7 +403,6 @@ def check_last_value_in_range_S3_S4(df, value_column,bound_value,total_flex_max_
         if 'E' in name:
             continue
         
-        
         criteria_from_table_1_input = get_data_by_search(VIA_Train_Input_criteria, name, "Train_ID", value_column)
         if criteria_from_table_1_input == 1:
             subdf = VIA_Train_Input_criteria_dict[name]
@@ -420,7 +410,6 @@ def check_last_value_in_range_S3_S4(df, value_column,bound_value,total_flex_max_
                 print(f"check this one for odd time value,{name}")
                 continue
             continue
-        
         
         if criteria_from_table_1_input is None:
             if name not in VIA_Train_Input_criteria_dict.keys():
