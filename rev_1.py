@@ -1009,7 +1009,7 @@ non_compliance_df.to_excel(excel_writer, sheet_name='Non Compliance Log', index=
 compliance_df.to_excel(excel_writer, sheet_name='Compliance Log', index=False)
 
 # Close the Pandas Excel writer and output the Excel file
-excel_writer.save()
+excel_writer.close()
 
 print("Process finished --- %s seconds ---" % (time.time() - start_time))
 
