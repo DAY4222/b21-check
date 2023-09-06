@@ -1,5 +1,5 @@
 # b21-check
-Automation of requirements compliance
+Automation of requirements compliance CODE IS IN REV_3.PY file.
 
 Overview B2-1
 
